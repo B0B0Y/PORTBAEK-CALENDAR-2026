@@ -119,7 +119,24 @@ class CalendarAPI {
 
     // Get calendar data (Firebase-compatible format)
     static async getCalendar(month) {
-        return await this.fetch(`/calendar/${month.toUpperCase()}`);
+        const response = await this.fetch(`/calendar/${month.toUpperCase()}`);
+
+        // Transform backend format to frontend format
+        // Backend: events["2026-01-15"] = [...]
+        // Frontend: events[15] = [...]
+        if (response.success && response.data && response.data.events) {
+            const transformedEvents = {};
+
+            for (const [dateKey, dayEvents] of Object.entries(response.data.events)) {
+                // Extract day number from date string "2026-01-15" -> 15
+                const dayNum = parseInt(dateKey.split('-')[2]);
+                transformedEvents[dayNum] = dayEvents;
+            }
+
+            response.data.events = transformedEvents;
+        }
+
+        return response;
     }
 
     // Create new event
