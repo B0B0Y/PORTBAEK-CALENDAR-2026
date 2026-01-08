@@ -462,7 +462,7 @@ app.post('/api/init-db', async (req, res) => {
             )
         `);
 
-        // Create events table
+        // Create events table (if doesn't exist)
         await client.query(`
             CREATE TABLE IF NOT EXISTS events (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -470,11 +470,28 @@ app.post('/api/init-db', async (req, res) => {
                 title VARCHAR(255) NOT NULL,
                 color VARCHAR(50) NOT NULL DEFAULT '#5865F2',
                 month VARCHAR(20) NOT NULL,
-                section_id UUID REFERENCES sections(id) ON DELETE CASCADE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Add section_id column if it doesn't exist (migration)
+        const columnCheck = await client.query(`
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'events' AND column_name = 'section_id'
+        `);
+
+        if (columnCheck.rows.length === 0) {
+            console.log('📝 Adding section_id column to events table...');
+            await client.query(`
+                ALTER TABLE events
+                ADD COLUMN section_id UUID REFERENCES sections(id) ON DELETE CASCADE
+            `);
+            console.log('✅ section_id column added successfully');
+        } else {
+            console.log('✓ section_id column already exists');
+        }
 
         // Create indexes
         await client.query(`CREATE INDEX IF NOT EXISTS idx_events_date ON events(date)`);
