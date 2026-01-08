@@ -31,7 +31,7 @@ jobs:
       - name: 🚀 Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service portbaek-calendar
+        run: railway up
 
       - name: ✅ Deployment Status
         if: success()
