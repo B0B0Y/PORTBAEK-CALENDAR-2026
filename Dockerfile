@@ -6,7 +6,7 @@ COPY index.html /usr/share/nginx/html/
 COPY hmmmmmmmmmnmmmmnmmmmmm.html /usr/share/nginx/html/
 COPY hmmmmmmmmmnmmmmmmmmnmmm.html /usr/share/nginx/html/
 COPY cleanup-firebase.html /usr/share/nginx/html/
-COPY init-database.html /usr/share/nginx/html/
+COPY dev-mode.html /usr/share/nginx/html/
 COPY calendar-api-2026.js /usr/share/nginx/html/
 COPY Logo-PBRP.png /usr/share/nginx/html/
 COPY calendar-bg.png /usr/share/nginx/html/
