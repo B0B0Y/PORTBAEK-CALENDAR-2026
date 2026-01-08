@@ -2825,9 +2825,19 @@
                 if (data.success && data.data) {
                     allSections = data.data.filter(s => s.enabled);
                     renderSectionTabs();
+                    console.log('✅ Loaded sections from API:', allSections.length);
                 }
             } catch (error) {
                 console.error('Error loading sections:', error);
+                // Fallback to default sections if API fails
+                allSections = [
+                    { id: '1', name: 'MEDIA', color: '#E91E63', enabled: true },
+                    { id: '2', name: 'TEAM TASK', color: '#57F287', enabled: true },
+                    { id: '3', name: 'PEMERINTAH', color: '#FEE75C', enabled: true },
+                    { id: '4', name: 'GENERAL', color: '#5865F2', enabled: true }
+                ];
+                renderSectionTabs();
+                console.log('⚠️ Using fallback sections');
             }
         }
 
