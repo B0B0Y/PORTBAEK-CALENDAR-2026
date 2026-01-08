@@ -2695,6 +2695,9 @@
             });
         }
 
+        // WebSocket listener setup flag (prevent duplicates)
+        let websocketListenerSetup = false;
+
         // Setup Real-Time Sync (Viewer Mode - PostgreSQL + WebSocket)
         function setupRealtimeSync() {
             try {
@@ -2723,32 +2726,50 @@
                         console.log(`ℹ️ Using local data for ${currentMonthName}:`, error.message);
                     });
 
-                // WebSocket listener for realtime updates
-                if (window.CalendarWebSocket && typeof window.CalendarWebSocket.onMessage === 'function') {
-                    CalendarWebSocket.onMessage((message) => {
-                        if (message.type === 'event_created' ||
-                            message.type === 'event_updated' ||
-                            message.type === 'event_deleted' ||
-                            message.type === 'events_bulk_update') {
+                // Setup WebSocket listener ONLY ONCE
+                if (!websocketListenerSetup) {
+                    // Check WebSocket status
+                    const wsStatus = CalendarWebSocket.getStatus();
+                    console.log('📊 WebSocket Status:', wsStatus);
 
-                            // Reload current month events
-                            CalendarAPI.getCalendar(currentMonthName)
-                                .then(response => {
-                                    if (response.success && response.data && response.data.events) {
-                                        // Only update events, preserve month structure
-                                        const currentMonth = monthsData[currentMonthIndex];
-                                        currentMonth.events = response.data.events;
+                    if (window.CalendarWebSocket && typeof window.CalendarWebSocket.onMessage === 'function') {
+                        CalendarWebSocket.onMessage((message) => {
+                            console.log('📨 Received WebSocket message:', message);
 
-                                        renderCalendar(currentMonthIndex);
-                                        console.log(`🔄 Realtime update: ${currentMonthName} refreshed`);
-                                    }
-                                });
-                        }
-                    });
-                    console.log(`🔔 Viewer: Listening to ${currentMonthName} changes (WebSocket)`);
-                } else {
-                    console.log('ℹ️ WebSocket not available, using polling mode');
+                            if (message.type === 'event_created' ||
+                                message.type === 'event_updated' ||
+                                message.type === 'event_deleted' ||
+                                message.type === 'events_bulk_update') {
+
+                                // Get current month at time of update
+                                const updateMonthName = monthsData[currentMonthIndex].name;
+                                console.log(`🔄 Refreshing ${updateMonthName} due to ${message.type}`);
+
+                                // Reload current month events
+                                CalendarAPI.getCalendar(updateMonthName)
+                                    .then(response => {
+                                        if (response.success && response.data && response.data.events) {
+                                            // Only update events, preserve month structure
+                                            const currentMonth = monthsData[currentMonthIndex];
+                                            currentMonth.events = response.data.events;
+
+                                            renderCalendar(currentMonthIndex);
+                                            console.log(`✅ Realtime update: ${updateMonthName} refreshed`);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error(`❌ Failed to reload after update:`, error);
+                                    });
+                            }
+                        });
+                        websocketListenerSetup = true;
+                        console.log(`✅ WebSocket listener setup complete (one-time)`);
+                    } else {
+                        console.log('ℹ️ WebSocket not available, using polling mode');
+                    }
                 }
+
+                console.log(`🔔 Viewer: Monitoring ${currentMonthName} for changes`);
             } catch (error) {
                 console.log('ℹ️ Realtime sync not available:', error.message);
             }

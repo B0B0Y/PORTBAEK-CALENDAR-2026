@@ -33,50 +33,88 @@ class CalendarWebSocket {
         this.ws = null;
         this.reconnectDelay = 3000;
         this.onMessageCallback = null;
+        this.isConnected = false;
+        this.connectionAttempts = 0;
+        this.maxRetries = 5;
         this.connect();
     }
 
     connect() {
+        // Prevent multiple connection attempts
+        if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+            console.log('ℹ️ WebSocket already connected or connecting');
+            return;
+        }
+
         try {
+            this.connectionAttempts++;
+            console.log(`🔌 Attempting WebSocket connection... (attempt ${this.connectionAttempts}/${this.maxRetries})`);
+
             this.ws = new WebSocket(API_CONFIG.wsURL);
 
             this.ws.onopen = () => {
-                console.log('🔌 WebSocket connected');
+                console.log('✅ WebSocket connected successfully');
+                this.isConnected = true;
+                this.connectionAttempts = 0; // Reset on success
             };
 
             this.ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
+                    console.log('📨 WebSocket message received:', message);
                     if (this.onMessageCallback) {
                         this.onMessageCallback(message);
                     }
                 } catch (error) {
-                    console.error('WebSocket message parse error:', error);
+                    console.error('❌ WebSocket message parse error:', error);
                 }
             };
 
             this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
+                console.error('❌ WebSocket error:', error);
+                this.isConnected = false;
             };
 
-            this.ws.onclose = () => {
-                console.log('🔌 WebSocket disconnected, reconnecting...');
-                setTimeout(() => this.connect(), this.reconnectDelay);
+            this.ws.onclose = (event) => {
+                this.isConnected = false;
+                console.log('🔌 WebSocket disconnected', { code: event.code, reason: event.reason });
+
+                // Only reconnect if under max retries
+                if (this.connectionAttempts < this.maxRetries) {
+                    console.log(`⏳ Reconnecting in ${this.reconnectDelay}ms...`);
+                    setTimeout(() => this.connect(), this.reconnectDelay);
+                } else {
+                    console.warn('⚠️ Max WebSocket reconnection attempts reached. Manual refresh required.');
+                }
             };
         } catch (error) {
-            console.error('WebSocket connection error:', error);
-            setTimeout(() => this.connect(), this.reconnectDelay);
+            console.error('❌ WebSocket connection error:', error);
+            this.isConnected = false;
+            if (this.connectionAttempts < this.maxRetries) {
+                setTimeout(() => this.connect(), this.reconnectDelay);
+            }
         }
     }
 
     onMessage(callback) {
         this.onMessageCallback = callback;
+        console.log('✅ WebSocket message listener registered');
     }
 
     send(data) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
+        } else {
+            console.warn('⚠️ Cannot send: WebSocket not connected');
         }
+    }
+
+    getConnectionStatus() {
+        return {
+            isConnected: this.isConnected,
+            readyState: this.ws ? this.ws.readyState : null,
+            attempts: this.connectionAttempts
+        };
     }
 }
 
@@ -179,7 +217,8 @@ if (typeof window !== 'undefined') {
     window.CalendarAPI = CalendarAPI;
     window.CalendarWebSocket = {
         onMessage: (callback) => calendarWS.onMessage(callback),
-        send: (data) => calendarWS.send(data)
+        send: (data) => calendarWS.send(data),
+        getStatus: () => calendarWS.getConnectionStatus()
     };
     window.MONTHS_2026 = MONTHS_2026;
 }
