@@ -310,12 +310,29 @@ app.post('/api/events/bulk', async (req, res) => {
         // Delete existing events for this month
         await client.query('DELETE FROM events WHERE month = $1', [month.toUpperCase()]);
 
+        // Check if section_id column exists
+        const columnCheck = await client.query(`
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'events' AND column_name = 'section_id'
+        `);
+        const hasSectionColumn = columnCheck.rows.length > 0;
+
         // Insert new events
         for (const event of events) {
-            await client.query(
-                'INSERT INTO events (date, title, color, month, section_id) VALUES ($1, $2, $3, $4, $5)',
-                [event.date, event.title, event.color || '#5865F2', month.toUpperCase(), event.section_id || section_id || null]
-            );
+            if (hasSectionColumn) {
+                // New schema with section_id
+                await client.query(
+                    'INSERT INTO events (date, title, color, month, section_id) VALUES ($1, $2, $3, $4, $5)',
+                    [event.date, event.title, event.color || '#5865F2', month.toUpperCase(), event.section_id || section_id || null]
+                );
+            } else {
+                // Old schema without section_id
+                await client.query(
+                    'INSERT INTO events (date, title, color, month) VALUES ($1, $2, $3, $4)',
+                    [event.date, event.title, event.color || '#5865F2', month.toUpperCase()]
+                );
+            }
         }
 
         await client.query('COMMIT');
