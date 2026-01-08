@@ -2128,7 +2128,7 @@
                 grid.classList.add('transitioning-back');
                 setTimeout(() => {
                     renderCalendar(currentMonthIndex);
-                    // Re-setup Firebase listener for new month
+                    // Re-setup PostgreSQL listener for new month
                     setupRealtimeSync();
                     setTimeout(() => grid.classList.remove('transitioning-back'), 500);
                 }, 50);
@@ -2144,7 +2144,7 @@
                 grid.classList.add('transitioning');
                 setTimeout(() => {
                     renderCalendar(currentMonthIndex);
-                    // Re-setup Firebase listener for new month
+                    // Re-setup PostgreSQL listener for new month
                     setupRealtimeSync();
                     setTimeout(() => grid.classList.remove('transitioning'), 500);
                 }, 50);
@@ -2165,7 +2165,7 @@
             currentMonthIndex = monthIndex;
             setTimeout(() => {
                 renderCalendar(currentMonthIndex);
-                // Re-setup Firebase listener for new month
+                // Re-setup PostgreSQL listener for new month
                 setupRealtimeSync();
                 setTimeout(() => {
                     grid.classList.remove('transitioning');
@@ -3037,13 +3037,13 @@
                 checkAndUpgradeDataFormat();
             }, 1000);
             
-            // Setup real-time Firebase sync
+            // Setup real-time PostgreSQL sync
             setupRealtimeSync();
             
             // Setup drag and drop for legend items
             setupLegendDragAndDrop();
             
-            console.log('✅ Calendar loaded with Firebase sync support');
+            console.log('✅ Calendar loaded with PostgreSQL sync support');
         });
 
         // Setup Drag and Drop for Legend Items (ADMIN ONLY)
@@ -3284,43 +3284,59 @@
             try {
                 const currentMonthName = monthsData[currentMonthIndex].name;
 
+                // Check if CalendarAPI and CalendarWebSocket are available
+                if (!window.CalendarAPI || !window.CalendarWebSocket) {
+                    console.log('ℹ️ Calendar API not available, skipping realtime sync');
+                    return;
+                }
+
                 // Load events from PostgreSQL
                 CalendarAPI.getCalendar(currentMonthName)
                     .then(response => {
-                        if (response.success && response.data) {
-                            monthsData[currentMonthIndex] = response.data;
+                        if (response.success && response.data && response.data.events) {
+                            // IMPORTANT: Only update events, don't overwrite entire month data
+                            const currentMonth = monthsData[currentMonthIndex];
+                            currentMonth.events = response.data.events;
+
+                            // Re-render with updated events
                             renderCalendar(currentMonthIndex);
-                            console.log(`✅ Loaded ${currentMonthName} from PostgreSQL`);
+                            console.log(`✅ Loaded ${currentMonthName} events from PostgreSQL`);
                         }
                     })
                     .catch(error => {
-                        console.error(`❌ Error loading ${currentMonthName}:`, error);
+                        console.log(`ℹ️ Using local data for ${currentMonthName}:`, error.message);
                     });
 
                 // WebSocket listener for realtime updates
-                CalendarWebSocket.onMessage((message) => {
-                    if (message.type === 'event_created' ||
-                        message.type === 'event_updated' ||
-                        message.type === 'event_deleted' ||
-                        message.type === 'events_bulk_update') {
+                if (window.CalendarWebSocket && typeof window.CalendarWebSocket.onMessage === 'function') {
+                    CalendarWebSocket.onMessage((message) => {
+                        if (message.type === 'event_created' ||
+                            message.type === 'event_updated' ||
+                            message.type === 'event_deleted' ||
+                            message.type === 'events_bulk_update') {
 
-                        // Only reload if not in edit mode to avoid disrupting user
-                        if (!isEditMode) {
-                            CalendarAPI.getCalendar(currentMonthName)
-                                .then(response => {
-                                    if (response.success && response.data) {
-                                        monthsData[currentMonthIndex] = response.data;
-                                        renderCalendar(currentMonthIndex);
-                                        console.log(`🔄 Realtime update: ${currentMonthName} refreshed`);
-                                    }
-                                });
+                            // Only reload if not in edit mode to avoid disrupting user
+                            if (!isEditMode) {
+                                CalendarAPI.getCalendar(currentMonthName)
+                                    .then(response => {
+                                        if (response.success && response.data && response.data.events) {
+                                            // Only update events, preserve month structure
+                                            const currentMonth = monthsData[currentMonthIndex];
+                                            currentMonth.events = response.data.events;
+
+                                            renderCalendar(currentMonthIndex);
+                                            console.log(`🔄 Realtime update: ${currentMonthName} refreshed`);
+                                        }
+                                    });
+                            }
                         }
-                    }
-                });
-
-                console.log(`🔔 Admin: Listening to ${currentMonthName} changes (WebSocket)`);
+                    });
+                    console.log(`🔔 Admin: Listening to ${currentMonthName} changes (WebSocket)`);
+                } else {
+                    console.log('ℹ️ WebSocket not available, using polling mode');
+                }
             } catch (error) {
-                console.error('❌ Error setting up realtime sync:', error);
+                console.log('ℹ️ Realtime sync not available:', error.message);
             }
         }
 
