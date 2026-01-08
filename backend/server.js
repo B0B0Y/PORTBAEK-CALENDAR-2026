@@ -414,7 +414,11 @@ app.get('/api/calendar/:month', async (req, res) => {
     try {
         const { month } = req.params;
         const result = await pool.query(
-            'SELECT * FROM events WHERE month = $1 ORDER BY date ASC',
+            `SELECT e.*, s.name as section_name, s.color as section_color
+             FROM events e
+             LEFT JOIN sections s ON e.section_id = s.id
+             WHERE e.month = $1
+             ORDER BY e.date ASC`,
             [month.toUpperCase()]
         );
 
@@ -429,7 +433,10 @@ app.get('/api/calendar/:month', async (req, res) => {
                 acc[dateKey].push({
                     id: event.id,
                     title: event.title,
-                    color: event.color
+                    color: event.color,
+                    section_id: event.section_id,
+                    section_name: event.section_name,
+                    section_color: event.section_color
                 });
                 return acc;
             }, {})
