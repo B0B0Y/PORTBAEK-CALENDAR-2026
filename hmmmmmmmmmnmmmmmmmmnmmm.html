@@ -1902,7 +1902,6 @@
     <!-- Edit Controls -->
     <div class="edit-controls">
         <button class="edit-btn" onclick="toggleEditMode()">✎ Edit Mode</button>
-        <button class="edit-btn" onclick="openSectionManager()" style="background: linear-gradient(135deg, rgba(233, 30, 99, 0.3), rgba(194, 24, 91, 0.2)); border-color: rgba(233, 30, 99, 0.5);">🏷️ Manage Sections</button>
         <button class="export-btn" onclick="exportToDiscord()" style="background: linear-gradient(135deg, rgba(88, 101, 242, 0.3), rgba(71, 82, 196, 0.2)); border-color: rgba(88, 101, 242, 0.5);">📤 Export to Discord</button>
     </div>
 
@@ -2025,10 +2024,6 @@
 
             <!-- Section Filter -->
             <div class="section-filter" id="sectionFilter">
-                <div class="section-tab active" data-section="all">
-                    <span class="section-badge" style="background: linear-gradient(135deg, #5865F2, #57F287);"></span>
-                    All Sections
-                </div>
                 <!-- Sections will be dynamically loaded -->
             </div>
 
@@ -2070,48 +2065,6 @@
                     <div class="legend-color" style="background: #22d3ee;"></div>
                     <span class="legend-text" style="color: #22d3ee;">6 WEAPON SKIN</span>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section Manager Modal -->
-    <div class="edit-modal" id="sectionManagerModal" style="display: none;">
-        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
-            <div class="modal-header">
-                🏷️ Manage Sections
-                <button onclick="closeSectionManager()" style="float: right; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 0; margin: -5px 0;">&times;</button>
-            </div>
-
-            <!-- Add New Section Form -->
-            <div style="background: rgba(30, 30, 30, 0.6); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                <h3 style="color: #fff; margin-bottom: 15px; font-size: 16px;">➕ Add New Section</h3>
-                <div style="display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 10px; align-items: end;">
-                    <div>
-                        <label style="display: block; color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 5px;">Section Name *</label>
-                        <input type="text" id="newSectionName" placeholder="e.g., MEDIA" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff;">
-                    </div>
-                    <div>
-                        <label style="display: block; color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 5px;">Color *</label>
-                        <input type="color" id="newSectionColor" value="#5865F2" style="width: 100%; height: 42px; padding: 5px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; cursor: pointer;">
-                    </div>
-                    <div>
-                        <label style="display: block; color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 5px;">Discord Channel ID</label>
-                        <input type="text" id="newSectionDiscord" placeholder="Optional" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff;">
-                    </div>
-                    <button onclick="addNewSection()" class="modal-btn primary" style="height: 42px; padding: 0 20px;">Add</button>
-                </div>
-            </div>
-
-            <!-- Existing Sections List -->
-            <div>
-                <h3 style="color: #fff; margin-bottom: 15px; font-size: 16px;">📋 Existing Sections</h3>
-                <div id="sectionsList" style="display: grid; gap: 12px;">
-                    <!-- Sections will be loaded here -->
-                </div>
-            </div>
-
-            <div class="modal-actions" style="margin-top: 20px;">
-                <button class="modal-btn" onclick="closeSectionManager()">Close</button>
             </div>
         </div>
     </div>
@@ -3227,30 +3180,38 @@
 
             console.log('🎨 Rendering section tabs...', allSections.length, 'sections');
 
-            // Keep "All Sections" tab
-            const allTab = filterContainer.querySelector('[data-section="all"]');
+            // Clear all tabs
+            filterContainer.innerHTML = '';
 
-            // Remove old section tabs
-            const oldTabs = filterContainer.querySelectorAll('[data-section]:not([data-section="all"])');
-            oldTabs.forEach(tab => tab.remove());
-
-            // Add section tabs
-            allSections.forEach(section => {
+            // Add section tabs with right-click rename
+            allSections.forEach((section, index) => {
                 console.log('  ✓ Adding section tab:', section.name);
                 const tab = document.createElement('div');
                 tab.className = 'section-tab';
+                if (index === 0) tab.classList.add('active'); // First tab active by default
                 tab.setAttribute('data-section', section.id);
+                tab.setAttribute('data-section-name', section.name);
+                tab.setAttribute('data-section-color', section.color);
                 tab.innerHTML = `
                     <span class="section-badge" style="background: ${section.color};"></span>
                     ${section.name}
                 `;
+
+                // Left click - filter
                 tab.addEventListener('click', () => filterBySection(section.id));
+
+                // Right click - rename
+                tab.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    renameSectionPrompt(section.id, section.name, section.color);
+                });
+
                 filterContainer.appendChild(tab);
             });
 
-            // Add click handler to "All" tab
-            if (allTab) {
-                allTab.addEventListener('click', () => filterBySection('all'));
+            // Set first section as filter if no filter is set
+            if (allSections.length > 0 && currentSectionFilter === 'all') {
+                currentSectionFilter = allSections[0].id;
             }
 
             console.log('✅ Section tabs rendered successfully!');
@@ -3302,80 +3263,27 @@
 
         // ==================== SECTION MANAGER FUNCTIONS ====================
 
-        // Open Section Manager Modal
-        async function openSectionManager() {
-            document.getElementById('sectionManagerModal').style.display = 'flex';
-            await loadSectionsList();
-        }
+        // Rename section with prompt
+        async function renameSectionPrompt(sectionId, currentName, currentColor) {
+            const newName = prompt(`Rename section "${currentName}":`, currentName);
 
-        // Close Section Manager Modal
-        function closeSectionManager() {
-            document.getElementById('sectionManagerModal').style.display = 'none';
-        }
-
-        // Load and display sections list
-        async function loadSectionsList() {
-            try {
-                const response = await fetch(`${CalendarAPI.baseURL}/api/sections`);
-                const data = await response.json();
-
-                const sectionsList = document.getElementById('sectionsList');
-
-                if (data.success && data.data && data.data.length > 0) {
-                    sectionsList.innerHTML = data.data.map(section => `
-                        <div style="background: rgba(30, 30, 30, 0.6); padding: 15px; border-radius: 10px; border-left: 4px solid ${section.color};">
-                            <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 15px; align-items: center;">
-                                <div style="width: 40px; height: 40px; background: ${section.color}; border-radius: 8px;"></div>
-                                <div>
-                                    <div style="color: #fff; font-weight: 600; font-size: 16px;">${section.name}</div>
-                                    <div style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 4px;">
-                                        ${section.discord_channel_id ? 'Discord: ' + section.discord_channel_id : 'No Discord channel'}
-                                    </div>
-                                </div>
-                                <span style="padding: 4px 12px; background: ${section.enabled ? 'rgba(87, 242, 135, 0.2)' : 'rgba(237, 66, 69, 0.2)'}; color: ${section.enabled ? '#57F287' : '#ED4245'}; border-radius: 6px; font-size: 11px; font-weight: 600;">
-                                    ${section.enabled ? 'ACTIVE' : 'DISABLED'}
-                                </span>
-                                <button onclick="deleteSection('${section.id}', '${section.name}')" style="padding: 8px 16px; background: rgba(237, 66, 69, 0.2); border: 1px solid rgba(237, 66, 69, 0.3); color: #ED4245; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    sectionsList.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.5);">
-                            <div style="font-size: 48px; margin-bottom: 10px;">📦</div>
-                            <div>No sections yet. Add your first section above!</div>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error loading sections:', error);
-                showToast('❌ Error loading sections', 'error');
+            if (!newName || newName.trim() === '') {
+                return; // User cancelled or empty
             }
-        }
 
-        // Add new section
-        async function addNewSection() {
-            const name = document.getElementById('newSectionName').value.trim();
-            const color = document.getElementById('newSectionColor').value;
-            const discordChannelId = document.getElementById('newSectionDiscord').value.trim();
-
-            if (!name) {
-                showToast('⚠️ Please enter section name', 'error');
-                return;
+            if (newName.trim().toUpperCase() === currentName.toUpperCase()) {
+                return; // No change
             }
 
             try {
-                const response = await fetch(`${CalendarAPI.baseURL}/api/sections`, {
-                    method: 'POST',
+                const response = await fetch(`${CalendarAPI.baseURL}/api/sections/${sectionId}`, {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        name: name.toUpperCase(),
-                        color: color,
-                        discord_channel_id: discordChannelId || null,
+                        name: newName.trim().toUpperCase(),
+                        color: currentColor,
                         enabled: true
                     })
                 });
@@ -3383,45 +3291,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showToast('✅ Section created successfully!', 'success');
-
-                    // Clear form
-                    document.getElementById('newSectionName').value = '';
-                    document.getElementById('newSectionColor').value = '#5865F2';
-                    document.getElementById('newSectionDiscord').value = '';
-
-                    // Reload sections list
-                    await loadSectionsList();
-
-                    // Reload section filter tabs
-                    await loadSectionsFilter();
-                } else {
-                    showToast('❌ Error: ' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Error creating section:', error);
-                showToast('❌ Error creating section', 'error');
-            }
-        }
-
-        // Delete section
-        async function deleteSection(id, name) {
-            if (!confirm(`Delete section "${name}"?\n\nThis will also remove this section from all assigned events.`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`${CalendarAPI.baseURL}/api/sections/${id}`, {
-                    method: 'DELETE'
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showToast('✅ Section deleted successfully!', 'success');
-
-                    // Reload sections list
-                    await loadSectionsList();
+                    showToast(`✅ Section renamed to "${newName.toUpperCase()}"`, 'success');
 
                     // Reload section filter tabs
                     await loadSectionsFilter();
@@ -3432,8 +3302,8 @@
                     showToast('❌ Error: ' + result.error, 'error');
                 }
             } catch (error) {
-                console.error('Error deleting section:', error);
-                showToast('❌ Error deleting section', 'error');
+                console.error('Error renaming section:', error);
+                showToast('❌ Error renaming section', 'error');
             }
         }
 
