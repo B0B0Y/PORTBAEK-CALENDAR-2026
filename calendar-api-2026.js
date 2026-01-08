@@ -120,6 +120,10 @@ class CalendarWebSocket {
 
 // API Client
 class CalendarAPI {
+    static get baseURL() {
+        return API_CONFIG.baseURL;
+    }
+
     static async fetch(endpoint, options = {}) {
         const url = `${API_CONFIG.baseURL}${endpoint}`;
         const config = {
