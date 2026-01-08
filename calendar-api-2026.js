@@ -160,7 +160,10 @@ const calendarWS = new CalendarWebSocket();
 // Export for use in HTML files
 if (typeof window !== 'undefined') {
     window.CalendarAPI = CalendarAPI;
-    window.CalendarWebSocket = calendarWS;
+    window.CalendarWebSocket = {
+        onMessage: (callback) => calendarWS.onMessage(callback),
+        send: (data) => calendarWS.send(data)
+    };
     window.MONTHS_2026 = MONTHS_2026;
 }
 
