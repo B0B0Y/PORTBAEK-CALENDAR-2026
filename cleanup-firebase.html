@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cleanup Portbaek Firebase - Remove PB Media Data</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0a0a0a;
+            color: white;
+            font-family: 'Inter', monospace;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        h1 {
+            color: #5865F2;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #5865F2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #4752C4;
+        }
+        button.danger {
+            background: #ed4245;
+        }
+        button.danger:hover {
+            background: #c53030;
+        }
+        .log {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 3px 0;
+        }
+        .log-success {
+            color: #57F287;
+        }
+        .log-error {
+            color: #ed4245;
+        }
+        .log-info {
+            color: #5865F2;
+        }
+        .log-warning {
+            color: #FEE75C;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #2b2d31;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Cleanup Portbaek Firebase Database</h1>
+        <p>Tool ini akan membantu anda membersihkan data PB Media dari Portbaek Firebase database.</p>
+
+        <div class="status" id="status">
+            Status: Ready to cleanup
+        </div>
+
+        <div>
+            <button onclick="viewAllData()">📋 View All Data</button>
+            <button onclick="backupData()">💾 Backup Data</button>
+            <button class="danger" onclick="confirmCleanup()">🗑️ Clean Up PB Media Data</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div class="log" id="logContainer"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, get, set, remove } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase Configuration - Portbaek
+        const firebaseConfig = {
+            apiKey: "AIzaSyBku_z2Oiu0IoCdx--Zoi-bLciacl7QTCM",
+            authDomain: "portbaek-calendar.firebaseapp.com",
+            databaseURL: "https://portbaek-calendar-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "portbaek-calendar",
+            storageBucket: "portbaek-calendar.firebasestorage.app",
+            messagingSenderId: "237213935811",
+            appId: "1:237213935811:web:23e8d54d2cb4c0fe789a76",
+            measurementId: "G-733V2TJG66"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebaseGet = get;
+        window.firebaseSet = set;
+        window.firebaseRemove = remove;
+
+        log('🔥 Firebase initialized successfully!', 'success');
+        log('Connected to: ' + firebaseConfig.databaseURL, 'info');
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = 'Status: ' + message;
+        }
+
+        window.log = log;
+        window.updateStatus = updateStatus;
+
+        // View all data
+        window.viewAllData = async function() {
+            try {
+                log('📋 Fetching all data from Firebase...', 'info');
+                updateStatus('Fetching data...');
+
+                const dataRef = ref(database, 'events');
+                const snapshot = await get(dataRef);
+
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    log('✅ Data fetched successfully!', 'success');
+                    log('Total events: ' + Object.keys(data).length, 'info');
+                    log(JSON.stringify(data, null, 2), 'info');
+                    updateStatus('Data loaded - check logs');
+                } else {
+                    log('⚠️ No data found in database', 'warning');
+                    updateStatus('Database is empty');
+                }
+            } catch (error) {
+                log('❌ Error fetching data: ' + error.message, 'error');
+                updateStatus('Error fetching data');
+            }
+        };
+
+        // Backup data
+        window.backupData = async function() {
+            try {
+                log('💾 Creating backup...', 'info');
+                updateStatus('Creating backup...');
+
+                const dataRef = ref(database, 'events');
+                const snapshot = await get(dataRef);
+
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    const backup = {
+                        timestamp: new Date().toISOString(),
+                        data: data
+                    };
+
+                    // Download as JSON file
+                    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `portbaek-firebase-backup-${Date.now()}.json`;
+                    a.click();
+
+                    log('✅ Backup created and downloaded!', 'success');
+                    updateStatus('Backup completed');
+                } else {
+                    log('⚠️ No data to backup', 'warning');
+                    updateStatus('Nothing to backup');
+                }
+            } catch (error) {
+                log('❌ Error creating backup: ' + error.message, 'error');
+                updateStatus('Backup failed');
+            }
+        };
+
+        // Clean up PB Media data
+        window.confirmCleanup = function() {
+            const confirm = window.confirm(
+                '⚠️ WARNING: This will analyze and identify PB Media related data.\n\n' +
+                'The script will:\n' +
+                '1. Scan all events\n' +
+                '2. Look for PB Media related keywords\n' +
+                '3. Show you what will be deleted\n' +
+                '4. Ask for final confirmation\n\n' +
+                'Continue?'
+            );
+
+            if (confirm) {
+                analyzePBMediaData();
+            }
+        };
+
+        async function analyzePBMediaData() {
+            try {
+                log('🔍 Analyzing data for PB Media entries...', 'info');
+                updateStatus('Analyzing data...');
+
+                const dataRef = ref(database, 'events');
+                const snapshot = await get(dataRef);
+
+                if (!snapshot.exists()) {
+                    log('⚠️ No data found in database', 'warning');
+                    updateStatus('Database is empty');
+                    return;
+                }
+
+                const data = snapshot.val();
+                const pbMediaKeywords = ['pb media', 'pbmedia', 'pb-media', 'shooting pb', 'pbrp'];
+                const toDelete = [];
+
+                // Scan for PB Media related events
+                Object.keys(data).forEach(key => {
+                    const event = data[key];
+                    const eventText = JSON.stringify(event).toLowerCase();
+
+                    for (const keyword of pbMediaKeywords) {
+                        if (eventText.includes(keyword.toLowerCase())) {
+                            toDelete.push({
+                                key: key,
+                                data: event,
+                                reason: `Contains keyword: "${keyword}"`
+                            });
+                            break;
+                        }
+                    }
+                });
+
+                if (toDelete.length === 0) {
+                    log('✅ No PB Media related data found!', 'success');
+                    log('Database appears clean from PB Media entries.', 'info');
+                    updateStatus('No PB Media data found');
+                    return;
+                }
+
+                log(`⚠️ Found ${toDelete.length} potential PB Media entries:`, 'warning');
+                toDelete.forEach((item, index) => {
+                    log(`${index + 1}. ${item.key}: ${item.reason}`, 'warning');
+                    log(`   Data: ${JSON.stringify(item.data)}`, 'info');
+                });
+
+                const confirmDelete = window.confirm(
+                    `Found ${toDelete.length} entries that might be PB Media related.\n\n` +
+                    'Check the logs to review what will be deleted.\n\n' +
+                    'Proceed with deletion?'
+                );
+
+                if (confirmDelete) {
+                    await deletePBMediaData(toDelete);
+                } else {
+                    log('❌ Cleanup cancelled by user', 'warning');
+                    updateStatus('Cleanup cancelled');
+                }
+
+            } catch (error) {
+                log('❌ Error analyzing data: ' + error.message, 'error');
+                updateStatus('Analysis failed');
+            }
+        }
+
+        async function deletePBMediaData(items) {
+            try {
+                log('🗑️ Starting deletion process...', 'info');
+                updateStatus('Deleting data...');
+
+                let deleted = 0;
+                let failed = 0;
+
+                for (const item of items) {
+                    try {
+                        const itemRef = ref(database, `events/${item.key}`);
+                        await remove(itemRef);
+                        log(`✅ Deleted: ${item.key}`, 'success');
+                        deleted++;
+                    } catch (error) {
+                        log(`❌ Failed to delete ${item.key}: ${error.message}`, 'error');
+                        failed++;
+                    }
+                }
+
+                log(`\n=== Cleanup Summary ===`, 'info');
+                log(`✅ Successfully deleted: ${deleted}`, 'success');
+                if (failed > 0) {
+                    log(`❌ Failed to delete: ${failed}`, 'error');
+                }
+                log(`======================\n`, 'info');
+
+                updateStatus(`Cleanup completed: ${deleted} deleted, ${failed} failed`);
+
+            } catch (error) {
+                log('❌ Error during deletion: ' + error.message, 'error');
+                updateStatus('Deletion failed');
+            }
+        }
+
+        window.clearLogs = function() {
+            document.getElementById('logContainer').innerHTML = '';
+            log('Logs cleared', 'info');
+        };
+
+    </script>
+</body>
+</html>

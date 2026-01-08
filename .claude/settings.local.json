@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flyctl auth whoami:*)",
+      "Bash(flyctl deploy:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(flyctl tokens create:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo create:*)",
+      "Bash(railway:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
