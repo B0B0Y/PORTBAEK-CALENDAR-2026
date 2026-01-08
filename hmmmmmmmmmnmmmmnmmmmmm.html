@@ -1996,7 +1996,8 @@
                 if (eventsToRender) {
                     eventsToRender.forEach((event, index) => {
                         const eventDiv = document.createElement('div');
-                        eventDiv.textContent = event.text;
+                        // Support both title (from PostgreSQL) and text (from localStorage)
+                        eventDiv.textContent = event.title || event.text || 'Untitled';
 
                         if (index > 0) {
                             eventDiv.style.marginTop = '5px';
