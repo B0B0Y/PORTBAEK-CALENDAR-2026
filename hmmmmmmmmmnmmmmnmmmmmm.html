@@ -2695,10 +2695,14 @@
                 // Load events from PostgreSQL
                 CalendarAPI.getCalendar(currentMonthName)
                     .then(response => {
-                        if (response.success && response.data) {
-                            monthsData[currentMonthIndex] = response.data;
+                        if (response.success && response.data && response.data.events) {
+                            // IMPORTANT: Only update events, don't overwrite entire month data
+                            const currentMonth = monthsData[currentMonthIndex];
+                            currentMonth.events = response.data.events;
+
+                            // Re-render with updated events
                             renderCalendar(currentMonthIndex);
-                            console.log(`✅ Loaded ${currentMonthName} from PostgreSQL`);
+                            console.log(`✅ Loaded ${currentMonthName} events from PostgreSQL`);
                         }
                     })
                     .catch(error => {
@@ -2713,11 +2717,14 @@
                             message.type === 'event_deleted' ||
                             message.type === 'events_bulk_update') {
 
-                            // Reload current month
+                            // Reload current month events
                             CalendarAPI.getCalendar(currentMonthName)
                                 .then(response => {
-                                    if (response.success && response.data) {
-                                        monthsData[currentMonthIndex] = response.data;
+                                    if (response.success && response.data && response.data.events) {
+                                        // Only update events, preserve month structure
+                                        const currentMonth = monthsData[currentMonthIndex];
+                                        currentMonth.events = response.data.events;
+
                                         renderCalendar(currentMonthIndex);
                                         console.log(`🔄 Realtime update: ${currentMonthName} refreshed`);
                                     }
