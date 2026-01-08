@@ -2819,32 +2819,44 @@
         // Load sections and setup filter
         async function loadSectionsFilter() {
             try {
+                if (!window.CalendarAPI || !window.CalendarAPI.baseURL) {
+                    throw new Error('CalendarAPI not available');
+                }
+
                 const response = await fetch(`${CalendarAPI.baseURL}/api/sections`);
                 const data = await response.json();
 
-                if (data.success && data.data) {
+                if (data.success && data.data && data.data.length > 0) {
                     allSections = data.data.filter(s => s.enabled);
-                    renderSectionTabs();
                     console.log('✅ Loaded sections from API:', allSections.length);
+                } else {
+                    throw new Error('No sections data from API');
                 }
             } catch (error) {
-                console.error('Error loading sections:', error);
-                // Fallback to default sections if API fails
+                console.log('ℹ️ API unavailable, using fallback sections:', error.message);
+                // ALWAYS use fallback if API fails
                 allSections = [
                     { id: '1', name: 'MEDIA', color: '#E91E63', enabled: true },
                     { id: '2', name: 'TEAM TASK', color: '#57F287', enabled: true },
                     { id: '3', name: 'PEMERINTAH', color: '#FEE75C', enabled: true },
                     { id: '4', name: 'GENERAL', color: '#5865F2', enabled: true }
                 ];
+            } finally {
+                // ALWAYS render tabs regardless of API success/fail
                 renderSectionTabs();
-                console.log('⚠️ Using fallback sections');
+                console.log('📊 Total sections to display:', allSections.length);
             }
         }
 
         // Render section tabs
         function renderSectionTabs() {
             const filterContainer = document.getElementById('sectionFilter');
-            if (!filterContainer) return;
+            if (!filterContainer) {
+                console.error('❌ Section filter container not found!');
+                return;
+            }
+
+            console.log('🎨 Rendering section tabs...', allSections.length, 'sections');
 
             // Keep "All Sections" tab
             const allTab = filterContainer.querySelector('[data-section="all"]');
@@ -2855,6 +2867,7 @@
 
             // Add section tabs
             allSections.forEach(section => {
+                console.log('  ✓ Adding section tab:', section.name);
                 const tab = document.createElement('div');
                 tab.className = 'section-tab';
                 tab.setAttribute('data-section', section.id);
@@ -2870,6 +2883,8 @@
             if (allTab) {
                 allTab.addEventListener('click', () => filterBySection('all'));
             }
+
+            console.log('✅ Section tabs rendered successfully!');
         }
 
         // Filter calendar by section
