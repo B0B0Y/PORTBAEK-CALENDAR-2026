@@ -1899,37 +1899,38 @@
                 }
             });
             
-            // Load saved data for this month - TRY FIREBASE FIRST
+            // Load saved data from PostgreSQL (Railway) or localStorage fallback
             let savedMonthData = null;
-            try {
-                // Try to load from Firebase
-                const dbRef = window.firebaseRef(window.firebaseDB, `calendar/${month.name}`);
-                const snapshot = await window.firebaseGet(dbRef);
-                
-                if (snapshot.exists()) {
-                    savedMonthData = snapshot.val();
-                    const version = savedMonthData.version || 1;
-                    console.log(`🔥 Viewer loaded from Firebase: ${month.name} (v${version})`, savedMonthData);
-                } else {
-                    // Fallback to localStorage if Firebase has no data
-                    console.log('📦 Trying localStorage for', month.name);
-                    const allSaved = localStorage.getItem('calendarMonthsData');
-                    if (allSaved) {
-                        const parsed = JSON.parse(allSaved);
-                        savedMonthData = parsed[month.name];
+
+            // Try loading from PostgreSQL via Railway API
+            if (window.CalendarAPI) {
+                try {
+                    const response = await CalendarAPI.getCalendar(month.name);
+                    if (response.success && response.data && response.data.events) {
+                        savedMonthData = {
+                            version: 2,
+                            events: response.data.events
+                        };
+                        console.log(`🚂 Loaded ${month.name} from Railway PostgreSQL`, savedMonthData);
                     }
+                } catch (error) {
+                    console.log(`ℹ️ PostgreSQL unavailable for ${month.name}, using localStorage`);
                 }
-            } catch (e) {
-                console.log('⚠️ Firebase error, using localStorage:', e.message);
-                // Fallback to localStorage
+            }
+
+            // Fallback to localStorage if PostgreSQL failed
+            if (!savedMonthData) {
                 try {
                     const allSaved = localStorage.getItem('calendarMonthsData');
                     if (allSaved) {
                         const parsed = JSON.parse(allSaved);
                         savedMonthData = parsed[month.name];
+                        if (savedMonthData) {
+                            console.log(`📦 Loaded ${month.name} from localStorage`);
+                        }
                     }
                 } catch (localError) {
-                    console.log('No saved data for', month.name);
+                    console.log(`ℹ️ No saved data for ${month.name}`);
                 }
             }
             
@@ -2685,6 +2686,12 @@
             try {
                 const currentMonthName = monthsData[currentMonthIndex].name;
 
+                // Check if CalendarAPI and CalendarWebSocket are available
+                if (!window.CalendarAPI || !window.CalendarWebSocket) {
+                    console.log('ℹ️ Calendar API not available, skipping realtime sync');
+                    return;
+                }
+
                 // Load events from PostgreSQL
                 CalendarAPI.getCalendar(currentMonthName)
                     .then(response => {
@@ -2695,31 +2702,34 @@
                         }
                     })
                     .catch(error => {
-                        console.error(`❌ Error loading ${currentMonthName}:`, error);
+                        console.log(`ℹ️ Using local data for ${currentMonthName}:`, error.message);
                     });
 
                 // WebSocket listener for realtime updates
-                CalendarWebSocket.onMessage((message) => {
-                    if (message.type === 'event_created' ||
-                        message.type === 'event_updated' ||
-                        message.type === 'event_deleted' ||
-                        message.type === 'events_bulk_update') {
+                if (window.CalendarWebSocket && typeof window.CalendarWebSocket.onMessage === 'function') {
+                    CalendarWebSocket.onMessage((message) => {
+                        if (message.type === 'event_created' ||
+                            message.type === 'event_updated' ||
+                            message.type === 'event_deleted' ||
+                            message.type === 'events_bulk_update') {
 
-                        // Reload current month
-                        CalendarAPI.getCalendar(currentMonthName)
-                            .then(response => {
-                                if (response.success && response.data) {
-                                    monthsData[currentMonthIndex] = response.data;
-                                    renderCalendar(currentMonthIndex);
-                                    console.log(`🔄 Realtime update: ${currentMonthName} refreshed`);
-                                }
-                            });
-                    }
-                });
-
-                console.log(`🔔 Viewer: Listening to ${currentMonthName} changes (WebSocket)`);
+                            // Reload current month
+                            CalendarAPI.getCalendar(currentMonthName)
+                                .then(response => {
+                                    if (response.success && response.data) {
+                                        monthsData[currentMonthIndex] = response.data;
+                                        renderCalendar(currentMonthIndex);
+                                        console.log(`🔄 Realtime update: ${currentMonthName} refreshed`);
+                                    }
+                                });
+                        }
+                    });
+                    console.log(`🔔 Viewer: Listening to ${currentMonthName} changes (WebSocket)`);
+                } else {
+                    console.log('ℹ️ WebSocket not available, using polling mode');
+                }
             } catch (error) {
-                console.error('❌ Error setting up realtime sync:', error);
+                console.log('ℹ️ Realtime sync not available:', error.message);
             }
         }
 

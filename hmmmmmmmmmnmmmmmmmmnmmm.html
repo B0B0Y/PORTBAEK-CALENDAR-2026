@@ -2041,55 +2041,7 @@
                     dot.classList.remove('active');
                 }
             });
-            
-            // Load saved data for this month - TRY FIREBASE FIRST
-            let savedMonthData = null;
-            try {
-                // Try to load from Firebase
-                const dbRef = window.firebaseRef(window.firebaseDB, `calendar/${month.name}`);
-                const snapshot = await window.firebaseGet(dbRef);
-                
-                if (snapshot.exists()) {
-                    savedMonthData = snapshot.val();
-                    const version = savedMonthData.version || 1;
-                    console.log(`🔥 Loaded from Firebase: ${month.name} (v${version})`, savedMonthData);
-                    
-                    // Alert if using old version
-                    if (version === 1) {
-                        console.warn('⚠️ OLD DATA FORMAT DETECTED! Click "🔄 Force Re-Save" button to upgrade to v2');
-                    }
-                    
-                    // Also save to localStorage as backup
-                    let allSaved = {};
-                    try {
-                        const local = localStorage.getItem('calendarMonthsData');
-                        if (local) allSaved = JSON.parse(local);
-                    } catch (e) {}
-                    allSaved[month.name] = savedMonthData;
-                    localStorage.setItem('calendarMonthsData', JSON.stringify(allSaved));
-                } else {
-                    // Fallback to localStorage if Firebase has no data
-                    console.log('📦 Trying localStorage for', month.name);
-                    const allSaved = localStorage.getItem('calendarMonthsData');
-                    if (allSaved) {
-                        const parsed = JSON.parse(allSaved);
-                        savedMonthData = parsed[month.name];
-                    }
-                }
-            } catch (e) {
-                console.log('⚠️ Firebase error, using localStorage:', e.message);
-                // Fallback to localStorage
-                try {
-                    const allSaved = localStorage.getItem('calendarMonthsData');
-                    if (allSaved) {
-                        const parsed = JSON.parse(allSaved);
-                        savedMonthData = parsed[month.name];
-                    }
-                } catch (localError) {
-                    console.log('No saved data for', month.name);
-                }
-            }
-            
+
             // Clear grid
             console.log(`🗑️ Clearing grid for ${month.name}`);
             grid.innerHTML = '';
@@ -2121,41 +2073,17 @@
                 dayNumber.className = 'day-number';
                 dayNumber.textContent = day;
                 dayCell.appendChild(dayNumber);
-                
-                // Determine which events to use: saved data or default data
-                let eventsToRender = null;
-                
-                // Check if we have Version 2 saved data (explicit empty day tracking)
-                const hasV2Data = savedMonthData && savedMonthData.version === 2;
-                
-                if (hasV2Data && savedMonthData.events && savedMonthData.events.hasOwnProperty(day)) {
-                    // Version 2: ALL days are tracked, use saved data (even if empty)
-                    eventsToRender = savedMonthData.events[day];
-                    if (eventsToRender.length === 0) {
-                        console.log(`✓ Day ${day}: Empty (user removed events)`);
-                    } else {
-                        console.log(`✓ Day ${day}: ${eventsToRender.length} saved event(s)`);
-                    }
-                } else if (savedMonthData && savedMonthData.events && savedMonthData.events.hasOwnProperty(day)) {
-                    // Version 1 or legacy: Only edited days are saved
-                    eventsToRender = savedMonthData.events[day];
-                    console.log(`Day ${day}: Legacy saved data`);
-                } else if (month.events[day]) {
-                    // No saved data: Use default events
-                    eventsToRender = month.events[day].map(e => ({
-                        text: e.text,
-                        isCustom: false,
-                        color: e.class
-                    }));
-                    console.log(`Day ${day}: Using default data`);
-                }
-                
+
+                // Render events from monthsData (loaded from PostgreSQL)
+                const eventsToRender = month.events[day];
+
                 // Render events
-                if (eventsToRender) {
+                if (eventsToRender && Array.isArray(eventsToRender)) {
+                    console.log(`✓ Day ${day}: ${eventsToRender.length} event(s)`);
                     eventsToRender.forEach((event, index) => {
                         const eventDiv = document.createElement('div');
-                        eventDiv.textContent = event.text;
-                        
+                        eventDiv.textContent = event.title || event.text || 'Untitled';
+
                         if (index > 0) {
                             eventDiv.style.marginTop = '5px';
                         }
