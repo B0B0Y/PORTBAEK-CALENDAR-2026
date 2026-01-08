@@ -2067,6 +2067,11 @@
                         // Support both title (from PostgreSQL) and text (from localStorage)
                         eventDiv.textContent = event.title || event.text || 'Untitled';
 
+                        // Set section_id data attribute if present
+                        if (event.section_id) {
+                            eventDiv.dataset.sectionId = event.section_id;
+                        }
+
                         if (index > 0) {
                             eventDiv.style.marginTop = '5px';
                         }
@@ -2628,7 +2633,12 @@
                         const eventData = {
                             text: event.textContent
                         };
-                        
+
+                        // Add section_id if present
+                        if (event.dataset.sectionId) {
+                            eventData.section_id = event.dataset.sectionId;
+                        }
+
                         // Check if custom color
                         if (event.dataset.customColor) {
                             eventData.isCustom = true;
