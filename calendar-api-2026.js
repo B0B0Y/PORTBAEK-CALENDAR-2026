@@ -6,8 +6,8 @@
 
 // API Configuration
 const API_CONFIG = {
-    baseURL: 'https://portbaek-calendar-backend-production.up.railway.app/api',
-    wsURL: 'wss://portbaek-calendar-backend-production.up.railway.app',
+    baseURL: 'https://backend-production-3c29.up.railway.app/api',
+    wsURL: 'wss://backend-production-3c29.up.railway.app',
     timeout: 10000
 };
 

@@ -256,6 +256,86 @@ app.get('/api/calendar/:month', async (req, res) => {
     }
 });
 
+// Initialize database (run once)
+app.post('/api/init-db', async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        console.log('🚀 Initializing database schema...');
+
+        // Create events table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS events (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                date DATE NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                color VARCHAR(50) NOT NULL DEFAULT '#5865F2',
+                month VARCHAR(20) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Create indexes
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_events_date ON events(date)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_events_month ON events(month)`);
+
+        // Create updated_at trigger function
+        await client.query(`
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+        `);
+
+        // Create trigger
+        await client.query(`
+            DROP TRIGGER IF EXISTS update_events_updated_at ON events
+        `);
+        await client.query(`
+            CREATE TRIGGER update_events_updated_at
+                BEFORE UPDATE ON events
+                FOR EACH ROW
+                EXECUTE FUNCTION update_updated_at_column()
+        `);
+
+        // Insert sample data for 2026
+        await client.query(`
+            INSERT INTO events (date, title, color, month) VALUES
+                ('2026-01-15', 'New Year Planning', '#5865F2', 'JANUARY'),
+                ('2026-01-20', 'Team Meeting', '#57F287', 'JANUARY'),
+                ('2026-02-14', 'Valentine Event', '#EB459E', 'FEBRUARY'),
+                ('2026-03-10', 'Q1 Review', '#FEE75C', 'MARCH')
+            ON CONFLICT DO NOTHING
+        `);
+
+        // Get event count
+        const result = await client.query('SELECT COUNT(*) FROM events');
+        const count = result.rows[0].count;
+
+        console.log('✅ Database initialized successfully');
+        console.log(`📊 Total events: ${count}`);
+
+        res.json({
+            success: true,
+            message: 'Database initialized successfully',
+            eventCount: count
+        });
+
+    } catch (error) {
+        console.error('❌ Error initializing database:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    } finally {
+        client.release();
+    }
+});
+
 // Start HTTP server
 const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
