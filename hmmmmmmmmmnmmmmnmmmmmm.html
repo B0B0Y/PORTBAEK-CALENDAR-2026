@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar 2025 - Portbaek Roleplay (Viewer)</title>
-    
+    <title>Calendar 2026 - Portbaek Roleplay (Viewer)</title>
+
     <!-- Open Graph Meta Tags for Discord Preview -->
-    <meta property="og:title" content="Kalendar 2025 - Portbaek Roleplay">
+    <meta property="og:title" content="Kalendar 2026 - Portbaek Roleplay">
     <meta property="og:description" content="Kalendar event bulanan untuk Portbaek Roleplay - Viewer Mode">
     <meta property="og:image" content="https://november.fly.dev/Logo-PBRP.png">
     <meta property="og:url" content="https://november.fly.dev/hmmmmmmmmmnmmmmmmmmnmmm.html">
@@ -1795,8 +1795,8 @@
             </div>
             
             <div class="calendar-header">
-                <h1 id="monthTitle">NOVEMBER</h1>
-                <p class="calendar-subtitle">2025</p>
+                <h1 id="monthTitle">JANUARY</h1>
+                <p class="calendar-subtitle">2026</p>
                 <p class="server-name">Portbaek Roleplay</p>
             </div>
 
@@ -1806,8 +1806,18 @@
                     ‹
                 </button>
                 <div class="month-indicator">
-                    <div class="month-dot active" data-month="0" title="November"></div>
-                    <div class="month-dot" data-month="1" title="December"></div>
+                    <div class="month-dot active" data-month="0" title="January"></div>
+                    <div class="month-dot" data-month="1" title="February"></div>
+                    <div class="month-dot" data-month="2" title="March"></div>
+                    <div class="month-dot" data-month="3" title="April"></div>
+                    <div class="month-dot" data-month="4" title="May"></div>
+                    <div class="month-dot" data-month="5" title="June"></div>
+                    <div class="month-dot" data-month="6" title="July"></div>
+                    <div class="month-dot" data-month="7" title="August"></div>
+                    <div class="month-dot" data-month="8" title="September"></div>
+                    <div class="month-dot" data-month="9" title="October"></div>
+                    <div class="month-dot" data-month="10" title="November"></div>
+                    <div class="month-dot" data-month="11" title="December"></div>
                 </div>
                 <button class="month-nav-btn" id="nextMonth" title="Next Month">
                     ›
@@ -1856,60 +1866,21 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, get, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBku_z2Oiu0IoCdx--Zoi-bLciacl7QTCM",
-            authDomain: "portbaek-calendar.firebaseapp.com",
-            databaseURL: "https://portbaek-calendar-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "portbaek-calendar",
-            storageBucket: "portbaek-calendar.firebasestorage.app",
-            messagingSenderId: "237213935811",
-            appId: "1:237213935811:web:23e8d54d2cb4c0fe789a76",
-            measurementId: "G-733V2TJG66"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-
-        // Make Firebase available globally
-        window.firebaseDB = database;
-        window.firebaseRef = ref;
-        window.firebaseGet = get;
-        window.firebaseOnValue = onValue;
-
-        console.log('🔥 Firebase initialized successfully! (Viewer Mode)');
+    <!-- Calendar API 2026 - PostgreSQL Backend -->
+    <script src="calendar-api-2026.js"></script>
+    <script>
+        console.log('✅ Calendar API 2026 loaded! (Viewer Mode)');
+        console.log('📊 Months available:', MONTHS_2026.length);
+        console.log('🔌 WebSocket ready for realtime sync');
     </script>
 
     <script>
         // Month Navigation State
-        let currentMonthIndex = 0; // Start with November (index 0)
-        
-        // Month Data Structure
-        const monthsData = [
-            // November 2025 - EMPTY (User will add their own events)
-            {
-                name: "NOVEMBER",
-                year: "2025",
-                startDay: 6, // Saturday (0=Sun, 6=Sat)
-                days: 30,
-                events: {} // Empty - no default events
-            },
-            // December 2025 - EMPTY (User will add their own events)
-            {
-                name: "DECEMBER",
-                year: "2025",
-                startDay: 1, // Monday (0=Sun, 1=Mon)
-                days: 31,
-                events: {} // Empty - no default events
-            }
-        ];
+        let currentMonthIndex = 0; // Start with January (index 0)
+
+        // Calendar 2026 - 12 Months (from API client)
+        const monthsData = MONTHS_2026;
+        console.log('📅 Calendar loaded: 2026 with', monthsData.length, 'months');
 
         // Render Calendar for specific month
         async function renderCalendar(monthIndex) {
@@ -2709,34 +2680,46 @@
             });
         }
 
-        // Store Firebase unsubscribe function
-        let firebaseUnsubscribe = null;
-
-        // Setup Real-Time Firebase Sync (Viewer)
+        // Setup Real-Time Sync (Viewer Mode - PostgreSQL + WebSocket)
         function setupRealtimeSync() {
             try {
-                // Unsubscribe from previous month listener if exists
-                if (firebaseUnsubscribe) {
-                    console.log('🔕 Viewer: Unsubscribing from previous month listener');
-                    firebaseUnsubscribe();
-                    firebaseUnsubscribe = null;
-                }
-
-                // Listen for changes to current month
                 const currentMonthName = monthsData[currentMonthIndex].name;
-                const dbRef = window.firebaseRef(window.firebaseDB, `calendar/${currentMonthName}`);
-                
-                firebaseUnsubscribe = window.firebaseOnValue(dbRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        console.log('🔄 Viewer: Firebase update detected for', currentMonthName);
-                        renderCalendar(currentMonthIndex);
-                        console.log('📥 Viewer: Calendar auto-updated from cloud');
+
+                // Load events from PostgreSQL
+                CalendarAPI.getCalendar(currentMonthName)
+                    .then(response => {
+                        if (response.success && response.data) {
+                            monthsData[currentMonthIndex] = response.data;
+                            renderCalendar(currentMonthIndex);
+                            console.log(`✅ Loaded ${currentMonthName} from PostgreSQL`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`❌ Error loading ${currentMonthName}:`, error);
+                    });
+
+                // WebSocket listener for realtime updates
+                CalendarWebSocket.onMessage((message) => {
+                    if (message.type === 'event_created' ||
+                        message.type === 'event_updated' ||
+                        message.type === 'event_deleted' ||
+                        message.type === 'events_bulk_update') {
+
+                        // Reload current month
+                        CalendarAPI.getCalendar(currentMonthName)
+                            .then(response => {
+                                if (response.success && response.data) {
+                                    monthsData[currentMonthIndex] = response.data;
+                                    renderCalendar(currentMonthIndex);
+                                    console.log(`🔄 Realtime update: ${currentMonthName} refreshed`);
+                                }
+                            });
                     }
                 });
-                
-                console.log('🔥 Viewer: Real-time sync enabled for', currentMonthName);
+
+                console.log(`🔔 Viewer: Listening to ${currentMonthName} changes (WebSocket)`);
             } catch (error) {
-                console.log('⚠️ Viewer: Real-time sync not available:', error.message);
+                console.error('❌ Error setting up realtime sync:', error);
             }
         }
 
