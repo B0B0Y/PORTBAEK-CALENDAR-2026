@@ -1997,14 +1997,17 @@
                     eventsToRender.forEach((event, index) => {
                         const eventDiv = document.createElement('div');
                         eventDiv.textContent = event.text;
-                        
+
                         if (index > 0) {
                             eventDiv.style.marginTop = '5px';
                         }
-                        
+
                         // Apply styling based on event type
+                        // Check if event.color is hex code (from PostgreSQL) or class name
+                        const isHexColor = event.color && event.color.startsWith('#');
+
                         if (event.isCustom && event.customColor) {
-                            // Custom color
+                            // Custom color from localStorage
                             const lightColor = lightenColor(event.customColor, 20);
                             eventDiv.className = 'day-event';
                             eventDiv.style.background = `linear-gradient(135deg, ${event.customColor}33, ${event.customColor}22)`;
@@ -2012,11 +2015,21 @@
                             eventDiv.style.border = `1px solid ${event.customColor}55`;
                             eventDiv.style.boxShadow = `inset 0 1px 0 ${event.customColor}33`;
                             eventDiv.dataset.customColor = event.customColor;
+                        } else if (isHexColor) {
+                            // Hex color from PostgreSQL - apply as custom color
+                            const hexColor = event.color;
+                            const lightColor = lightenColor(hexColor, 20);
+                            eventDiv.className = 'day-event';
+                            eventDiv.style.background = `linear-gradient(135deg, ${hexColor}33, ${hexColor}22)`;
+                            eventDiv.style.color = lightColor;
+                            eventDiv.style.border = `1px solid ${hexColor}55`;
+                            eventDiv.style.boxShadow = `inset 0 1px 0 ${hexColor}33`;
+                            eventDiv.dataset.customColor = hexColor;
                         } else {
-                            // Preset color
-                            eventDiv.className = 'day-event ' + event.color;
+                            // Class name (emote, mamu, etc.) from localStorage
+                            eventDiv.className = 'day-event ' + (event.color || 'emote');
                         }
-                        
+
                         dayCell.appendChild(eventDiv);
                     });
                 }
