@@ -1934,6 +1934,14 @@
                 </div>
             </div>
 
+            <div class="modal-field">
+                <label class="modal-label">Section</label>
+                <select class="modal-input" id="eventSection" style="background: rgba(30, 30, 30, 0.8); color: #fff; cursor: pointer;">
+                    <option value="">No Section</option>
+                    <!-- Sections will be populated dynamically -->
+                </select>
+            </div>
+
             <div class="modal-actions">
                 <button class="modal-btn" onclick="closeModal()">Cancel</button>
                 <button class="modal-btn danger" onclick="deleteEvent()">Delete</button>
@@ -2147,10 +2155,15 @@
                         const eventDiv = document.createElement('div');
                         eventDiv.textContent = event.title || event.text || 'Untitled';
 
+                        // Set section_id data attribute if present
+                        if (event.section_id) {
+                            eventDiv.dataset.sectionId = event.section_id;
+                        }
+
                         if (index > 0) {
                             eventDiv.style.marginTop = '5px';
                         }
-                        
+
                         // Apply styling based on event type
                         // Check if event.color is hex code (from PostgreSQL) or class name
                         const isHexColor = event.color && event.color.startsWith('#');
@@ -2680,7 +2693,11 @@
             
             // Set modal values
             document.getElementById('eventText').value = currentText;
-            
+
+            // Set section dropdown value
+            const currentSectionId = e.target.dataset.sectionId || '';
+            document.getElementById('eventSection').value = currentSectionId;
+
             // Show modal
             document.getElementById('editModal').classList.add('active');
         }
@@ -2816,7 +2833,8 @@
         // Save Event
         function saveEvent() {
             const eventText = document.getElementById('eventText').value.trim();
-            
+            const sectionId = document.getElementById('eventSection').value;
+
             if (!eventText) {
                 showToast('⚠️ Please enter event text', 'error');
                 return;
@@ -2825,7 +2843,14 @@
             if (currentEditElement) {
                 // Edit existing event
                 currentEditElement.textContent = eventText;
-                
+
+                // Save section_id
+                if (sectionId) {
+                    currentEditElement.dataset.sectionId = sectionId;
+                } else {
+                    delete currentEditElement.dataset.sectionId;
+                }
+
                 if (isCustomColor) {
                     // Apply custom color
                     const lightColor = lightenColor(customColorValue, 20);
@@ -2850,7 +2875,12 @@
                 const newEvent = document.createElement('div');
                 newEvent.textContent = eventText;
                 newEvent.style.marginTop = '5px';
-                
+
+                // Save section_id
+                if (sectionId) {
+                    newEvent.dataset.sectionId = sectionId;
+                }
+
                 if (isCustomColor) {
                     // Apply custom color
                     const lightColor = lightenColor(customColorValue, 20);
@@ -2864,11 +2894,11 @@
                     // Use preset color
                     newEvent.className = 'day-event ' + selectedColorClass;
                 }
-                
+
                 // Add click listener
                 newEvent.addEventListener('click', handleEventClick);
                 setupDragAndDrop(newEvent, currentEditDay);
-                
+
                 currentEditDay.appendChild(newEvent);
                 showToast('✅ Event added', 'info');
             }
@@ -2978,6 +3008,11 @@
                                 title: event.textContent || '',
                                 month: currentMonthName
                             };
+
+                            // Add section_id if present
+                            if (event.dataset.sectionId) {
+                                eventData.section_id = event.dataset.sectionId;
+                            }
 
                             // Check if custom color
                             if (event.dataset.customColor) {
@@ -3176,6 +3211,32 @@
             }
 
             console.log('✅ Section tabs rendered successfully!');
+
+            // Also populate the section dropdown in edit modal
+            populateSectionDropdown();
+        }
+
+        // Populate section dropdown in edit modal
+        function populateSectionDropdown() {
+            const sectionSelect = document.getElementById('eventSection');
+            if (!sectionSelect) {
+                console.error('❌ Section select element not found!');
+                return;
+            }
+
+            // Clear existing options except "No Section"
+            sectionSelect.innerHTML = '<option value="">No Section</option>';
+
+            // Add sections as options
+            allSections.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section.id;
+                option.textContent = section.name;
+                option.style.color = section.color;
+                sectionSelect.appendChild(option);
+            });
+
+            console.log('✅ Section dropdown populated with', allSections.length, 'sections');
         }
 
         // Filter calendar by section
