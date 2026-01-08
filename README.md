@@ -275,3 +275,4 @@ docker run -p 8080:8080 portbaek-calendar
 **Deployed on:** Fly.io
 **Database:** Firebase Realtime Database
 **Region:** Singapore (asia-southeast1)
+# Auto-Deploy Test
