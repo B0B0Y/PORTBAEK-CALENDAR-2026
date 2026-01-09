@@ -3049,6 +3049,9 @@
                             // Add section_id if present
                             if (event.dataset.sectionId) {
                                 eventData.section_id = event.dataset.sectionId;
+                                console.log(`  📌 Day ${dayNum}: "${event.textContent}" → section_id: ${event.dataset.sectionId}`);
+                            } else {
+                                console.warn(`  ⚠️ Day ${dayNum}: "${event.textContent}" → NO section_id!`);
                             }
 
                             // Check if custom color
@@ -3207,6 +3210,10 @@
                     allSections = data.data.filter(s => s.enabled);
                     sectionsFromAPI = true; // Sections have valid UUID
                     console.log('✅ Loaded sections from API:', allSections.length);
+                    console.log('📋 Section Details:');
+                    allSections.forEach(s => {
+                        console.log(`   - ${s.name} (ID: ${s.id})`);
+                    });
                 } else {
                     throw new Error('No sections data from API');
                 }
@@ -3289,6 +3296,8 @@
                 return;
             }
 
+            console.log('🔄 Populating section dropdown with', allSections.length, 'sections');
+
             // Clear existing options except "No Section"
             sectionSelect.innerHTML = '<option value="">No Section</option>';
 
@@ -3299,6 +3308,7 @@
                 option.textContent = section.name;
                 option.style.color = section.color;
                 sectionSelect.appendChild(option);
+                console.log(`  ✓ Added: ${section.name} (ID: ${section.id})`);
             });
 
             // Auto-select current section filter if active
