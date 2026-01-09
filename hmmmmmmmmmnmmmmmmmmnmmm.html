@@ -3201,11 +3201,19 @@
                         if (reloadResponse.success && reloadResponse.data && reloadResponse.data.events) {
                             // Update in-memory monthsData with fresh data from database
                             const currentMonth = monthsData[currentMonthIndex];
+
+                            // DEBUG: Log before replacement
+                            console.log('📦 BEFORE reload - month.events keys:', Object.keys(currentMonth.events || {}));
+
                             currentMonth.events = reloadResponse.data.events;
+
+                            // DEBUG: Log after replacement
+                            console.log('📦 AFTER reload - month.events keys:', Object.keys(currentMonth.events || {}));
                             console.log('✅ In-memory data refreshed from database');
 
-                            // Re-render calendar with fresh data
-                            renderCalendar(currentMonthIndex);
+                            // DO NOT re-render here - let filterBySection() handle it
+                            // This prevents double render which may cause duplicate display
+                            console.log('⏭️ Skipping render (will be handled by caller)');
                         }
                     } catch (reloadError) {
                         console.warn('⚠️ Could not reload after save:', reloadError);
@@ -3438,7 +3446,33 @@
                 if (reloadResponse.success && reloadResponse.data && reloadResponse.data.events) {
                     // Update in-memory monthsData with fresh data from database
                     const currentMonth = monthsData[currentMonthIndex];
+
+                    // DEBUG: Log before replacement
+                    console.log('📦 BEFORE section reload - month.events keys:', Object.keys(currentMonth.events || {}));
+
+                    // Count events per day before reload
+                    let totalEventsBefore = 0;
+                    for (const day in currentMonth.events) {
+                        if (Array.isArray(currentMonth.events[day])) {
+                            totalEventsBefore += currentMonth.events[day].length;
+                        }
+                    }
+                    console.log('📊 Total events BEFORE reload:', totalEventsBefore);
+
                     currentMonth.events = reloadResponse.data.events;
+
+                    // DEBUG: Log after replacement
+                    console.log('📦 AFTER section reload - month.events keys:', Object.keys(currentMonth.events || {}));
+
+                    // Count events per day after reload
+                    let totalEventsAfter = 0;
+                    for (const day in currentMonth.events) {
+                        if (Array.isArray(currentMonth.events[day])) {
+                            totalEventsAfter += currentMonth.events[day].length;
+                        }
+                    }
+                    console.log('📊 Total events AFTER reload:', totalEventsAfter);
+
                     console.log('✅ In-memory data refreshed from database');
                 }
             } catch (reloadError) {
