@@ -3136,13 +3136,31 @@
                 if (eventTitles.length !== uniqueEventTitles.length) {
                     console.error('⚠️⚠️⚠️ DUPLICATE EVENTS COLLECTED FROM DOM! ⚠️⚠️⚠️');
                     console.error(`   Total collected: ${eventTitles.length}, Unique: ${uniqueEventTitles.length}`);
-                    console.error(`   Duplicates will be saved to database!`);
+                    console.error(`   Duplicates WILL BE REMOVED before saving!`);
 
                     // Find and log the duplicates
                     const titleCounts = {};
                     eventTitles.forEach(t => titleCounts[t] = (titleCounts[t] || 0) + 1);
                     const duplicates = Object.entries(titleCounts).filter(([_, count]) => count > 1);
                     console.error('   Duplicate entries:', duplicates);
+
+                    // CRITICAL FIX: De-duplicate events before saving
+                    // Use Map to keep only the first occurrence of each unique event
+                    const uniqueEventsMap = new Map();
+                    eventsArray.forEach(event => {
+                        const key = `${event.date}|${event.title}|${event.section_id}`;
+                        if (!uniqueEventsMap.has(key)) {
+                            uniqueEventsMap.set(key, event);
+                        }
+                    });
+
+                    // Replace eventsArray with de-duplicated array
+                    const originalLength = eventsArray.length;
+                    eventsArray.length = 0; // Clear array
+                    Array.from(uniqueEventsMap.values()).forEach(e => eventsArray.push(e));
+
+                    console.log(`✅ DE-DUPLICATION: Removed ${originalLength - eventsArray.length} duplicate(s)`);
+                    console.log(`   Events after de-duplication: ${eventsArray.length}`);
                 }
 
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -3238,9 +3256,15 @@
                             console.log('📦 AFTER reload - month.events keys:', Object.keys(currentMonth.events || {}));
                             console.log('✅ In-memory data refreshed from database');
 
-                            // DO NOT re-render here - let filterBySection() handle it
-                            // This prevents double render which may cause duplicate display
-                            console.log('⏭️ Skipping render (will be handled by caller)');
+                            // Re-render ONLY if NOT silent mode
+                            // Silent mode = called by filterBySection (let it handle render)
+                            // Non-silent mode = user manually saved (MUST render to refresh DOM)
+                            if (!silent) {
+                                console.log('🔄 Re-rendering calendar with fresh database data...');
+                                renderCalendar(currentMonthIndex);
+                            } else {
+                                console.log('⏭️ Skipping render (silent mode - will be handled by caller)');
+                            }
                         }
                     } catch (reloadError) {
                         console.warn('⚠️ Could not reload after save:', reloadError);
