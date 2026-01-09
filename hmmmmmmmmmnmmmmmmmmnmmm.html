@@ -2147,14 +2147,28 @@
                     // DEBUG: Check for duplicate titles in source data
                     const titles = eventsToRender.map(e => e.title);
                     const uniqueTitles = [...new Set(titles)];
+                    let eventsToActuallyRender = eventsToRender;
+
                     if (titles.length !== uniqueTitles.length) {
                         console.error(`⚠️⚠️⚠️ DUPLICATE DETECTED IN SOURCE DATA for Day ${day}! ⚠️⚠️⚠️`);
                         console.error(`   Total events: ${titles.length}, Unique titles: ${uniqueTitles.length}`);
                         console.error(`   All titles:`, titles);
                         console.error(`   Full event data:`, eventsToRender);
+
+                        // CRITICAL FIX: De-duplicate before rendering
+                        const uniqueEventsMap = new Map();
+                        eventsToRender.forEach(event => {
+                            const key = `${event.title}|${event.section_id}|${event.color}`;
+                            if (!uniqueEventsMap.has(key)) {
+                                uniqueEventsMap.set(key, event);
+                            }
+                        });
+
+                        eventsToActuallyRender = Array.from(uniqueEventsMap.values());
+                        console.log(`✅ RENDER DE-DUPLICATION: Will render ${eventsToActuallyRender.length} unique events (skipped ${eventsToRender.length - eventsToActuallyRender.length} duplicates)`);
                     }
 
-                    eventsToRender.forEach((event, index) => {
+                    eventsToActuallyRender.forEach((event, index) => {
                         // Apply section filter
                         if (currentSectionFilter !== 'all' && event.section_id !== currentSectionFilter) {
                             console.log(`  ⏭️ SKIP: "${event.title}" (section: ${event.section_id})`);
