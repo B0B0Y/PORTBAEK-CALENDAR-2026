@@ -3040,9 +3040,17 @@
                 });
 
                 console.log('💾 Saving events to PostgreSQL:', currentMonthName, eventsArray);
+                console.log('🎯 Current section filter:', currentSectionFilter);
+
+                // If section filter is active (not 'all'), include section_id in save
+                let sectionIdForSave = null;
+                if (currentSectionFilter !== 'all') {
+                    sectionIdForSave = currentSectionFilter;
+                    console.log('📌 Saving only for section:', currentSectionFilter);
+                }
 
                 // Save to PostgreSQL using bulk save API
-                const response = await CalendarAPI.bulkSaveEvents(currentMonthName, eventsArray);
+                const response = await CalendarAPI.bulkSaveEvents(currentMonthName, eventsArray, sectionIdForSave);
 
                 if (response.success) {
                     console.log('✅ Data saved to PostgreSQL:', currentMonthName);

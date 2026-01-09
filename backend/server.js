@@ -307,16 +307,27 @@ app.post('/api/events/bulk', async (req, res) => {
 
         await client.query('BEGIN');
 
-        // Delete existing events for this month
-        await client.query('DELETE FROM events WHERE month = $1', [month.toUpperCase()]);
-
-        // Check if section_id column exists
+        // Check if section_id column exists first
         const columnCheck = await client.query(`
             SELECT column_name
             FROM information_schema.columns
             WHERE table_name = 'events' AND column_name = 'section_id'
         `);
         const hasSectionColumn = columnCheck.rows.length > 0;
+
+        // Delete existing events for this month (filtered by section if provided)
+        if (section_id && hasSectionColumn) {
+            // Delete only events for this section in this month
+            console.log(`🗑️ Deleting events for month: ${month.toUpperCase()}, section: ${section_id}`);
+            await client.query(
+                'DELETE FROM events WHERE month = $1 AND section_id = $2',
+                [month.toUpperCase(), section_id]
+            );
+        } else {
+            // Delete all events for this month (backward compatible)
+            console.log(`🗑️ Deleting ALL events for month: ${month.toUpperCase()}`);
+            await client.query('DELETE FROM events WHERE month = $1', [month.toUpperCase()]);
+        }
 
         // Insert new events
         for (const event of events) {

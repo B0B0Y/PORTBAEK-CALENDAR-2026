@@ -205,10 +205,20 @@ class CalendarAPI {
     }
 
     // Bulk save events for a month
-    static async bulkSaveEvents(month, events) {
+    static async bulkSaveEvents(month, events, section_id = null) {
+        const payload = {
+            month: month.toUpperCase(),
+            events
+        };
+
+        // Include section_id if provided (for partial saves)
+        if (section_id) {
+            payload.section_id = section_id;
+        }
+
         return await this.fetch('/events/bulk', {
             method: 'POST',
-            body: JSON.stringify({ month: month.toUpperCase(), events })
+            body: JSON.stringify(payload)
         });
     }
 }
