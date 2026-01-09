@@ -3041,12 +3041,17 @@
 
                 console.log('💾 Saving events to PostgreSQL:', currentMonthName, eventsArray);
                 console.log('🎯 Current section filter:', currentSectionFilter);
+                console.log('📡 Sections from API (valid UUIDs):', sectionsFromAPI);
 
-                // If section filter is active (not 'all'), include section_id in save
+                // Only send section_id if:
+                // 1. Section filter is active (not 'all')
+                // 2. Sections came from API (have valid UUIDs, not fallback IDs)
                 let sectionIdForSave = null;
-                if (currentSectionFilter !== 'all') {
+                if (currentSectionFilter !== 'all' && sectionsFromAPI) {
                     sectionIdForSave = currentSectionFilter;
                     console.log('📌 Saving only for section:', currentSectionFilter);
+                } else if (currentSectionFilter !== 'all' && !sectionsFromAPI) {
+                    console.log('⚠️ Section filter active but using fallback sections - saving ALL events to avoid data loss');
                 }
 
                 // Save to PostgreSQL using bulk save API
@@ -3147,6 +3152,7 @@
         // Section filtering
         let currentSectionFilter = 'all';
         let allSections = [];
+        let sectionsFromAPI = false; // Track if sections are from API (have valid UUIDs)
 
         // Load sections and setup filter
         async function loadSectionsFilter() {
@@ -3160,18 +3166,20 @@
 
                 if (data.success && data.data && data.data.length > 0) {
                     allSections = data.data.filter(s => s.enabled);
+                    sectionsFromAPI = true; // Sections have valid UUID
                     console.log('✅ Loaded sections from API:', allSections.length);
                 } else {
                     throw new Error('No sections data from API');
                 }
             } catch (error) {
                 console.log('ℹ️ API unavailable, using fallback sections:', error.message);
+                sectionsFromAPI = false; // Using fallback IDs, not UUIDs
                 // ALWAYS use fallback if API fails
                 allSections = [
-                    { id: '1', name: 'MEDIA', color: '#E91E63', enabled: true },
-                    { id: '2', name: 'TEAM TASK', color: '#57F287', enabled: true },
-                    { id: '3', name: 'PEMERINTAH', color: '#FEE75C', enabled: true },
-                    { id: '4', name: 'GENERAL', color: '#5865F2', enabled: true }
+                    { id: 'fallback-1', name: 'MEDIA', color: '#E91E63', enabled: true },
+                    { id: 'fallback-2', name: 'TEAM TASK', color: '#57F287', enabled: true },
+                    { id: 'fallback-3', name: 'PEMERINTAH', color: '#FEE75C', enabled: true },
+                    { id: 'fallback-4', name: 'GENERAL', color: '#5865F2', enabled: true }
                 ];
             } finally {
                 // ALWAYS render tabs regardless of API success/fail
