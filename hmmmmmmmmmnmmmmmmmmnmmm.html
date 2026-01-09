@@ -2141,13 +2141,15 @@
 
                 // Render events
                 if (eventsToRender && Array.isArray(eventsToRender)) {
-                    console.log(`✓ Day ${day}: ${eventsToRender.length} event(s)`);
+                    console.log(`✓ Day ${day}: ${eventsToRender.length} event(s) - Current Filter: ${currentSectionFilter}`);
                     eventsToRender.forEach((event, index) => {
                         // Apply section filter
                         if (currentSectionFilter !== 'all' && event.section_id !== currentSectionFilter) {
+                            console.log(`  ⏭️ SKIP: "${event.title}" (section: ${event.section_id})`);
                             return; // Skip this event if it doesn't match the filter
                         }
 
+                        console.log(`  ✅ SHOW: "${event.title}" (section: ${event.section_id})`);
                         const eventDiv = document.createElement('div');
                         eventDiv.textContent = event.title || event.text || 'Untitled';
 
@@ -3212,6 +3214,10 @@
             // Set first section as filter if no filter is set
             if (allSections.length > 0 && currentSectionFilter === 'all') {
                 currentSectionFilter = allSections[0].id;
+                console.log(`🎯 Auto-selected first section filter: ${allSections[0].name} (${currentSectionFilter})`);
+
+                // Re-render calendar with the new filter
+                renderCalendar(currentMonthIndex);
             }
 
             console.log('✅ Section tabs rendered successfully!');
