@@ -2143,6 +2143,17 @@
                 // Render events
                 if (eventsToRender && Array.isArray(eventsToRender)) {
                     console.log(`✓ Day ${day}: ${eventsToRender.length} event(s) - Current Filter: ${currentSectionFilter}`);
+
+                    // DEBUG: Check for duplicate titles in source data
+                    const titles = eventsToRender.map(e => e.title);
+                    const uniqueTitles = [...new Set(titles)];
+                    if (titles.length !== uniqueTitles.length) {
+                        console.error(`⚠️⚠️⚠️ DUPLICATE DETECTED IN SOURCE DATA for Day ${day}! ⚠️⚠️⚠️`);
+                        console.error(`   Total events: ${titles.length}, Unique titles: ${uniqueTitles.length}`);
+                        console.error(`   All titles:`, titles);
+                        console.error(`   Full event data:`, eventsToRender);
+                    }
+
                     eventsToRender.forEach((event, index) => {
                         // Apply section filter
                         if (currentSectionFilter !== 'all' && event.section_id !== currentSectionFilter) {
@@ -3118,6 +3129,22 @@
                 console.log('📝 Total events collected:', eventsArray.length);
                 console.log('❌ Orphaned events (no section_id):', orphanedEvents);
                 console.log('✅ Valid events (with section_id):', eventsArray.length - orphanedEvents);
+
+                // DEBUG: Check for duplicate events in collected data
+                const eventTitles = eventsArray.map(e => `${e.date}|${e.title}`);
+                const uniqueEventTitles = [...new Set(eventTitles)];
+                if (eventTitles.length !== uniqueEventTitles.length) {
+                    console.error('⚠️⚠️⚠️ DUPLICATE EVENTS COLLECTED FROM DOM! ⚠️⚠️⚠️');
+                    console.error(`   Total collected: ${eventTitles.length}, Unique: ${uniqueEventTitles.length}`);
+                    console.error(`   Duplicates will be saved to database!`);
+
+                    // Find and log the duplicates
+                    const titleCounts = {};
+                    eventTitles.forEach(t => titleCounts[t] = (titleCounts[t] || 0) + 1);
+                    const duplicates = Object.entries(titleCounts).filter(([_, count]) => count > 1);
+                    console.error('   Duplicate entries:', duplicates);
+                }
+
                 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
                 // CRITICAL: Stop if there are orphaned events and section filter is not active
