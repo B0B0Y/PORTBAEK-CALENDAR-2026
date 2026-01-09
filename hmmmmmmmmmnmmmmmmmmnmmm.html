@@ -3194,6 +3194,24 @@
                     allMonthsData[currentMonthName] = currentMonthData;
                     localStorage.setItem('calendarMonthsData', JSON.stringify(allMonthsData));
 
+                    // CRITICAL: Reload events from database to update in-memory data
+                    console.log('🔄 Reloading events from database after save...');
+                    try {
+                        const reloadResponse = await CalendarAPI.getCalendar(currentMonthName);
+                        if (reloadResponse.success && reloadResponse.data && reloadResponse.data.events) {
+                            // Update in-memory monthsData with fresh data from database
+                            const currentMonth = monthsData[currentMonthIndex];
+                            currentMonth.events = reloadResponse.data.events;
+                            console.log('✅ In-memory data refreshed from database');
+
+                            // Re-render calendar with fresh data
+                            renderCalendar(currentMonthIndex);
+                        }
+                    } catch (reloadError) {
+                        console.warn('⚠️ Could not reload after save:', reloadError);
+                        // Non-fatal - save was successful, just reload failed
+                    }
+
                     // Show success message
                     if (!silent) {
                         showToast('✅ Saved to cloud successfully!');
@@ -3389,7 +3407,7 @@
                 console.log(`   To section: ${sectionId}`);
 
                 try {
-                    await saveChanges(true); // Silent save
+                    await saveChanges(true); // Silent save (includes reload)
                     console.log('✅ Previous section saved successfully');
                 } catch (error) {
                     console.error('❌ Error saving previous section:', error);
@@ -3410,6 +3428,23 @@
                     tab.classList.remove('active');
                 }
             });
+
+            // CRITICAL: Reload events from database when switching sections
+            // This ensures we always have fresh data from the database
+            console.log('🔄 Reloading events from database for section filter...');
+            try {
+                const currentMonthName = monthsData[currentMonthIndex].name;
+                const reloadResponse = await CalendarAPI.getCalendar(currentMonthName);
+                if (reloadResponse.success && reloadResponse.data && reloadResponse.data.events) {
+                    // Update in-memory monthsData with fresh data from database
+                    const currentMonth = monthsData[currentMonthIndex];
+                    currentMonth.events = reloadResponse.data.events;
+                    console.log('✅ In-memory data refreshed from database');
+                }
+            } catch (reloadError) {
+                console.warn('⚠️ Could not reload from database:', reloadError);
+                // Continue with cached data if reload fails
+            }
 
             // Re-render calendar with filter
             renderCalendar(currentMonthIndex);
