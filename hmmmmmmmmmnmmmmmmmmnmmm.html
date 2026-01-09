@@ -2857,11 +2857,19 @@
             const eventText = document.getElementById('eventText').value.trim();
             let sectionId = document.getElementById('eventSection').value;
 
+            console.log('💾 saveEvent() called:');
+            console.log('   Event text:', eventText);
+            console.log('   Selected section from dropdown:', sectionId);
+            console.log('   Current section filter:', currentSectionFilter);
+            console.log('   Sections from API:', sectionsFromAPI);
+
             // If no section selected in dropdown BUT section filter is active,
             // auto-assign to current filtered section
             if (!sectionId && currentSectionFilter !== 'all' && sectionsFromAPI) {
                 sectionId = currentSectionFilter;
                 console.log('🎯 Auto-assigning event to current section filter:', sectionId);
+            } else if (!sectionId) {
+                console.warn('⚠️ No section will be assigned to this event!');
             }
 
             if (!eventText) {
@@ -3384,24 +3392,29 @@
         // ==================== END SECTION MANAGER ====================
 
         // Load calendar when page loads (saved data loaded automatically in renderCalendar)
-        window.addEventListener('load', () => {
-            // Render initial calendar (will load saved data automatically)
+        window.addEventListener('load', async () => {
+            console.log('🚀 Page load started...');
+
+            // STEP 1: Load sections FIRST (critical for section filtering)
+            console.log('📡 Loading sections from API...');
+            await loadSectionsFilter();
+            console.log('✅ Sections loaded:', sectionsFromAPI ? 'From API' : 'Fallback');
+
+            // STEP 2: Render initial calendar (will load saved data automatically)
+            console.log('📅 Rendering calendar...');
             renderCalendar(currentMonthIndex);
-            
-            // Check if we need to upgrade old data format
+
+            // STEP 3: Check if we need to upgrade old data format
             setTimeout(() => {
                 checkAndUpgradeDataFormat();
             }, 1000);
-            
-            // Setup real-time PostgreSQL sync
+
+            // STEP 4: Setup real-time PostgreSQL sync
             setupRealtimeSync();
 
-            // Load sections and setup filter
-            loadSectionsFilter();
-
-            // Setup drag and drop for legend items
+            // STEP 5: Setup drag and drop for legend items
             setupLegendDragAndDrop();
-            
+
             console.log('✅ Calendar loaded with PostgreSQL sync support');
         });
 
