@@ -3026,12 +3026,33 @@
             isSaving = true;
 
             try {
+                // CRITICAL: Check if section filter is active
+                if (currentSectionFilter === 'all') {
+                    const confirmMsg = '⚠️ WARNING: You are viewing "All Sections" but trying to save!\n\n' +
+                                     'This will overwrite ALL events in the database for this month.\n\n' +
+                                     'Please select a specific section (GENERAL, MEDIA, etc.) before saving.\n\n' +
+                                     'Continue anyway? (NOT RECOMMENDED)';
+                    if (!silent && !confirm(confirmMsg)) {
+                        isSaving = false;
+                        return;
+                    }
+                }
+
                 // Get current month name
                 const currentMonthName = monthsData[currentMonthIndex].name;
                 const currentMonth = monthsData[currentMonthIndex];
 
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('💾 SAVE OPERATION STARTED');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('📅 Month:', currentMonthName);
+                console.log('🎯 Section Filter:', currentSectionFilter);
+                console.log('📡 Sections from API:', sectionsFromAPI);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
                 // Extract events array from current month
                 const eventsArray = [];
+                let orphanedEvents = 0;
 
                 // Collect events from DOM
                 document.querySelectorAll('.calendar-day').forEach((day) => {
@@ -3049,9 +3070,18 @@
                             // Add section_id if present
                             if (event.dataset.sectionId) {
                                 eventData.section_id = event.dataset.sectionId;
-                                console.log(`  📌 Day ${dayNum}: "${event.textContent}" → section_id: ${event.dataset.sectionId}`);
+                                console.log(`  ✅ Day ${dayNum}: "${event.textContent.substring(0, 30)}" → ${event.dataset.sectionId}`);
                             } else {
-                                console.warn(`  ⚠️ Day ${dayNum}: "${event.textContent}" → NO section_id!`);
+                                orphanedEvents++;
+                                console.error(`  ❌ Day ${dayNum}: "${event.textContent}" → NO section_id! (ORPHANED EVENT)`);
+
+                                // AUTO-FIX: Assign to current section filter
+                                if (currentSectionFilter !== 'all' && sectionsFromAPI) {
+                                    event.dataset.sectionId = currentSectionFilter;
+                                    eventData.section_id = currentSectionFilter;
+                                    console.log(`  🔧 AUTO-FIX: Assigned orphaned event to current section: ${currentSectionFilter}`);
+                                    orphanedEvents--;
+                                }
                             }
 
                             // Check if custom color
@@ -3081,9 +3111,24 @@
                     }
                 });
 
-                console.log('💾 Saving events to PostgreSQL:', currentMonthName, eventsArray);
-                console.log('🎯 Current section filter:', currentSectionFilter);
-                console.log('📡 Sections from API (valid UUIDs):', sectionsFromAPI);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('📊 VALIDATION RESULTS');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('📝 Total events collected:', eventsArray.length);
+                console.log('❌ Orphaned events (no section_id):', orphanedEvents);
+                console.log('✅ Valid events (with section_id):', eventsArray.length - orphanedEvents);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+                // CRITICAL: Stop if there are orphaned events and section filter is not active
+                if (orphanedEvents > 0 && currentSectionFilter === 'all') {
+                    const errorMsg = `❌ SAVE BLOCKED!\n\n` +
+                                   `Found ${orphanedEvents} orphaned event(s) without section_id.\n\n` +
+                                   `Please select a specific section (GENERAL, MEDIA, etc.) first.\n\n` +
+                                   `This prevents data loss and ensures proper section isolation.`;
+                    alert(errorMsg);
+                    isSaving = false;
+                    return;
+                }
 
                 // Only send section_id if:
                 // 1. Section filter is active (not 'all')
@@ -3091,9 +3136,16 @@
                 let sectionIdForSave = null;
                 if (currentSectionFilter !== 'all' && sectionsFromAPI) {
                     sectionIdForSave = currentSectionFilter;
-                    console.log('📌 Saving only for section:', currentSectionFilter);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('🎯 SECTION-ISOLATED SAVE');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('💾 Saving ONLY for section:', currentSectionFilter);
+                    console.log('🔒 Other sections (MEDIA, PEMERINTAH, etc.) will NOT be affected');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 } else if (currentSectionFilter !== 'all' && !sectionsFromAPI) {
-                    console.log('⚠️ Section filter active but using fallback sections - saving ALL events to avoid data loss');
+                    console.warn('⚠️ Section filter active but using fallback sections - saving ALL events to avoid data loss');
+                } else {
+                    console.warn('⚠️ WARNING: Saving ALL events for ALL sections (section filter = "all")');
                 }
 
                 // Save to PostgreSQL using bulk save API
