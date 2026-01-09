@@ -2831,7 +2831,14 @@
         // Save Event
         function saveEvent() {
             const eventText = document.getElementById('eventText').value.trim();
-            const sectionId = document.getElementById('eventSection').value;
+            let sectionId = document.getElementById('eventSection').value;
+
+            // If no section selected in dropdown BUT section filter is active,
+            // auto-assign to current filtered section
+            if (!sectionId && currentSectionFilter !== 'all' && sectionsFromAPI) {
+                sectionId = currentSectionFilter;
+                console.log('🎯 Auto-assigning event to current section filter:', sectionId);
+            }
 
             if (!eventText) {
                 showToast('⚠️ Please enter event text', 'error');
@@ -3262,6 +3269,12 @@
                 sectionSelect.appendChild(option);
             });
 
+            // Auto-select current section filter if active
+            if (currentSectionFilter !== 'all' && sectionsFromAPI) {
+                sectionSelect.value = currentSectionFilter;
+                console.log('🎯 Auto-selected section in dropdown:', currentSectionFilter);
+            }
+
             console.log('✅ Section dropdown populated with', allSections.length, 'sections');
         }
 
@@ -3564,7 +3577,13 @@
                     newEvent.textContent = eventText;
                     newEvent.className = 'day-event ' + eventType;
                     newEvent.style.marginTop = '5px';
-                    
+
+                    // Auto-assign to current section filter if active
+                    if (currentSectionFilter !== 'all' && sectionsFromAPI) {
+                        newEvent.dataset.sectionId = currentSectionFilter;
+                        console.log('🎯 Auto-assigned drag-drop event to section:', currentSectionFilter);
+                    }
+
                     // Add click handler for editing
                     newEvent.addEventListener('click', handleEventClick);
                     
