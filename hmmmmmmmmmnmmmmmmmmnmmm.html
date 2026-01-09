@@ -2207,8 +2207,16 @@
         }
 
         // Navigate to previous month
-        function previousMonth() {
+        async function previousMonth() {
             if (currentMonthIndex > 0) {
+                // Save current section before changing month
+                if (currentSectionFilter !== 'all' && sectionsFromAPI) {
+                    console.log('💾 Auto-saving before month change (prev)...');
+                    try {
+                        await saveChanges(true);
+                    } catch (e) { console.error('Save error:', e); }
+                }
+
                 currentMonthIndex--;
                 const grid = document.getElementById('calendarGrid');
                 grid.classList.remove('transitioning');
@@ -2223,8 +2231,16 @@
         }
 
         // Navigate to next month
-        function nextMonth() {
+        async function nextMonth() {
             if (currentMonthIndex < monthsData.length - 1) {
+                // Save current section before changing month
+                if (currentSectionFilter !== 'all' && sectionsFromAPI) {
+                    console.log('💾 Auto-saving before month change (next)...');
+                    try {
+                        await saveChanges(true);
+                    } catch (e) { console.error('Save error:', e); }
+                }
+
                 currentMonthIndex++;
                 const grid = document.getElementById('calendarGrid');
                 grid.classList.remove('transitioning-back');
@@ -2239,16 +2255,24 @@
         }
 
         // Go to specific month
-        function goToMonth(monthIndex) {
+        async function goToMonth(monthIndex) {
             if (monthIndex === currentMonthIndex) return;
-            
+
+            // Save current section before changing month
+            if (currentSectionFilter !== 'all' && sectionsFromAPI) {
+                console.log('💾 Auto-saving before month change (goTo)...');
+                try {
+                    await saveChanges(true);
+                } catch (e) { console.error('Save error:', e); }
+            }
+
             const grid = document.getElementById('calendarGrid');
             if (monthIndex > currentMonthIndex) {
                 grid.classList.add('transitioning');
             } else {
                 grid.classList.add('transitioning-back');
             }
-            
+
             currentMonthIndex = monthIndex;
             setTimeout(() => {
                 renderCalendar(currentMonthIndex);
@@ -3279,7 +3303,22 @@
         }
 
         // Filter calendar by section
-        function filterBySection(sectionId) {
+        async function filterBySection(sectionId) {
+            // If changing to different section, save current section first!
+            if (currentSectionFilter !== sectionId && currentSectionFilter !== 'all' && sectionsFromAPI) {
+                console.log('💾 Auto-saving before section change...');
+                console.log(`   From section: ${currentSectionFilter}`);
+                console.log(`   To section: ${sectionId}`);
+
+                try {
+                    await saveChanges(true); // Silent save
+                    console.log('✅ Previous section saved successfully');
+                } catch (error) {
+                    console.error('❌ Error saving previous section:', error);
+                    // Continue anyway - don't block section change
+                }
+            }
+
             currentSectionFilter = sectionId;
 
             // Update active tab
