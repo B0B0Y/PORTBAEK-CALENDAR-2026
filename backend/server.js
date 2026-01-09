@@ -329,8 +329,28 @@ app.post('/api/events/bulk', async (req, res) => {
             await client.query('DELETE FROM events WHERE month = $1', [month.toUpperCase()]);
         }
 
-        // Insert new events
-        for (const event of events) {
+        // CRITICAL: De-duplicate events before inserting
+        console.log(`📊 Events received: ${events.length}`);
+        const uniqueEventsMap = new Map();
+        events.forEach(event => {
+            const key = `${event.date}|${event.title}|${event.section_id || section_id || 'null'}`;
+            if (!uniqueEventsMap.has(key)) {
+                uniqueEventsMap.set(key, event);
+            }
+        });
+
+        const uniqueEvents = Array.from(uniqueEventsMap.values());
+        const duplicatesRemoved = events.length - uniqueEvents.length;
+
+        if (duplicatesRemoved > 0) {
+            console.log(`⚠️ Removed ${duplicatesRemoved} duplicate(s) before inserting`);
+            console.log(`✅ Will insert ${uniqueEvents.length} unique events`);
+        } else {
+            console.log(`✅ All ${uniqueEvents.length} events are unique`);
+        }
+
+        // Insert new events (from de-duplicated array)
+        for (const event of uniqueEvents) {
             if (hasSectionColumn) {
                 // New schema with section_id
                 await client.query(
