@@ -2089,9 +2089,10 @@
         async function renderCalendar(monthIndex) {
             const month = monthsData[monthIndex];
             const grid = document.getElementById('calendarGrid');
-            
+
             console.log(`📅 renderCalendar() called for: ${month.name} (index ${monthIndex})`);
-            
+            console.log(`🎯 Active Section Filter: ${currentSectionFilter}`);
+
             // Update title
             document.getElementById('monthTitle').textContent = month.name;
             
@@ -3247,6 +3248,7 @@
         let currentSectionFilter = 'all';
         let allSections = [];
         let sectionsFromAPI = false; // Track if sections are from API (have valid UUIDs)
+        let isInitialSectionLoad = true; // Track if this is the first time loading sections
 
         // Load sections and setup filter
         async function loadSectionsFilter() {
@@ -3325,13 +3327,19 @@
                 filterContainer.appendChild(tab);
             });
 
-            // Set first section as filter if no filter is set
-            if (allSections.length > 0 && currentSectionFilter === 'all') {
+            // ONLY auto-select first section on initial page load
+            // Don't auto-switch sections after saves or section renames
+            if (allSections.length > 0 && currentSectionFilter === 'all' && isInitialSectionLoad) {
                 currentSectionFilter = allSections[0].id;
-                console.log(`🎯 Auto-selected first section filter: ${allSections[0].name} (${currentSectionFilter})`);
+                console.log(`🎯 Initial load: Auto-selected first section filter: ${allSections[0].name} (${currentSectionFilter})`);
+                isInitialSectionLoad = false; // Mark as loaded, don't auto-select again
 
                 // Re-render calendar with the new filter
                 renderCalendar(currentMonthIndex);
+            } else if (isInitialSectionLoad) {
+                // First load but already have a section filter (shouldn't happen, but safeguard)
+                isInitialSectionLoad = false;
+                console.log(`🎯 Initial load: Keeping current section filter: ${currentSectionFilter}`);
             }
 
             console.log('✅ Section tabs rendered successfully!');
@@ -3389,6 +3397,7 @@
                 }
             }
 
+            console.log(`🔄 Switching to section: ${sectionId}`);
             currentSectionFilter = sectionId;
 
             // Update active tab
@@ -3396,6 +3405,7 @@
             tabs.forEach(tab => {
                 if (tab.getAttribute('data-section') === sectionId) {
                     tab.classList.add('active');
+                    console.log(`✅ Activated tab: ${tab.textContent.trim()}`);
                 } else {
                     tab.classList.remove('active');
                 }
