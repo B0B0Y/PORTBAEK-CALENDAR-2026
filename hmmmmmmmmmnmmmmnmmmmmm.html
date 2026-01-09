@@ -2833,7 +2833,7 @@
                     throw new Error('CalendarAPI not available');
                 }
 
-                const response = await fetch(`${CalendarAPI.baseURL}/api/sections`);
+                const response = await fetch(`${CalendarAPI.baseURL}/sections`);
                 const data = await response.json();
 
                 if (data.success && data.data && data.data.length > 0) {
